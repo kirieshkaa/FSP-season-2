@@ -61,7 +61,7 @@ migrate-create:
 	migrate create -ext sql -dir $(MIGRATIONS_DIR) -seq $(name)
 
 seed-products:
-	uv run python scripts/generate_products.py --count $(or $(count),100) $(if $(seed),--seed $(seed),) $(if $(truncate),--truncate,)
+	uv run python scripts/seed_products.py --count $(or $(count),100) $(if $(seed),--seed $(seed),) $(if $(truncate),--truncate,)
 
 .PHONY: create-env docker-build dev-up dev-down prod-up prod-down logs \
 	migrate-up migrate-down migrate-down-all migrate-version migrate-force migrate-create \

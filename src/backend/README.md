@@ -43,7 +43,7 @@ Generate fake products and insert them into `product_service.products`:
 make seed-products                      # 100 products (upsert, keeps existing)
 make seed-products count=50 seed=42     # reproducible
 # or run directly:
-python scripts/generate_products.py --count 100 --truncate
+python scripts/seed_products.py --count 100 --truncate
 ```
 
 `--truncate` wipes the table first; by default rows are upserted by `id`.
