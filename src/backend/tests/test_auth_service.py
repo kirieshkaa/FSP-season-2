@@ -201,7 +201,7 @@ class TestProfile:
         user = await _repo(service).get_by_username("alice")
 
         profile = await service.get_user_profile(str(user.id))
-        assert profile["username"] == "alice"
+        assert profile["name"] == "alice"
         assert profile["email_masked"] == "al***@example.com"
         assert profile["role"] == "user"
         assert profile["status"] == "pending"

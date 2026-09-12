@@ -19,7 +19,7 @@ class UserStatus(str, Enum):
 @dataclass
 class User:
     id: UUID
-    username: str
+    name: str
     email: str
     password_hash: str
     role: UserRole

@@ -9,7 +9,7 @@ from app.config import get_config
 
 class JWTService:
     def create_access_token(
-        self, user_id: str, username: str, role: str
+        self, user_id: str, name: str, role: str
     ) -> tuple[str, str]:
         config = get_config()
         token_id = secrets.token_urlsafe(16)
@@ -19,7 +19,7 @@ class JWTService:
 
         payload = {
             "user_id": user_id,
-            "username": username,
+            "name": name,
             "role": role,
             "jti": token_id,
             "exp": expires_at,
@@ -33,7 +33,7 @@ class JWTService:
         return token, token_id
 
     def create_refresh_token(
-        self, user_id: str, username: str, role: str
+        self, user_id: str, name: str, role: str
     ) -> tuple[str, str]:
         config = get_config()
         token_id = secrets.token_urlsafe(16)
@@ -43,7 +43,7 @@ class JWTService:
 
         payload = {
             "user_id": user_id,
-            "username": username,
+            "name": name,
             "role": role,
             "jti": token_id,
             "exp": expires_at,

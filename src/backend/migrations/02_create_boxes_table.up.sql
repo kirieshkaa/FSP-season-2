@@ -1,12 +1,15 @@
-CREATE TABLE IF NOT EXISTS package_service.packages (
-  package_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+CREATE TABLE IF NOT EXISTS box_service.boxes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(32) NOT NULL,
+  type VARCHAR(16) NOT NULL,
   width DOUBLE PRECISION NOT NULL,
   height DOUBLE PRECISION NOT NULL,
   depth DOUBLE PRECISION NOT NULL,
   max_weight DOUBLE PRECISION NOT NULL,
   available_count INTEGER NOT NULL DEFAULT 0,
+  wear_rate DOUBLE PRECISION NOT NULL DEFAULT 1.0,
   created_at TIMESTAMP with TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP with TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_packages_created_at ON package_service.packages(created_at);
+CREATE INDEX IF NOT EXISTS idx_boxes_created_at ON box_service.boxes(created_at);

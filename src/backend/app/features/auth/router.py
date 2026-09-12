@@ -32,7 +32,7 @@ async def register(
 ):
     try:
         await auth_service.register(
-            username=body.username,
+            name=body.name,
             email=body.email,
             password=body.password,
         )
@@ -55,12 +55,12 @@ async def login(
     if not body.has_credentials:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username or email is required",
+            detail="Name or email is required",
         )
 
     try:
         tokens = await auth_service.login(
-            username=body.username,
+            name=body.name,
             email=body.email,
             password=body.password,
         )
@@ -154,7 +154,7 @@ async def get_current_user(
 
     return UserProfileResponse(
         id=str(profile["id"]),
-        username=profile["username"],
+        name=profile["name"],
         email_masked=profile["email_masked"],
         role=profile["role"],
         status=profile["status"],

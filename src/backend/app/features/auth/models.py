@@ -13,17 +13,11 @@ class UserModel(Base):
     __tablename__ = "users"
     __table_args__ = {"schema": "auth_service"}
 
-    id: Mapped[str] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4, name="user_id"
-    )
-    username: Mapped[str] = mapped_column(
-        String(255), unique=True, nullable=False, name="user_name"
-    )
-    email: Mapped[str] = mapped_column(
-        String(255), unique=True, nullable=False, name="user_email"
-    )
+    id: Mapped[str] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(
-        String(255), nullable=False, name="user_password"
+        String(255), nullable=False, name="password"
     )
     role: Mapped[UserRole] = mapped_column(
         Enum(
@@ -54,7 +48,6 @@ class RefreshTokenModel(Base):
         UUID(as_uuid=True),
         primary_key=True,
         default=uuid4,
-        name="refresh_token_id",
     )
     user_id: Mapped[str] = mapped_column(UUID(as_uuid=True), nullable=False)
     refresh_token: Mapped[str] = mapped_column(String(512), nullable=False)

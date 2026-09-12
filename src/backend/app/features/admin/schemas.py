@@ -21,8 +21,8 @@ class UserActionResponse(BaseModel):
 
 
 class RequireApprovalRequest(BaseModel):
-    require_approval: bool
+    is_approval_required: bool
 
 
 class RequireApprovalResponse(BaseModel):
-    require_approval: bool
+    is_approval_required: bool

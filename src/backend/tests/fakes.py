@@ -24,8 +24,10 @@ from app.features.auth.interfaces import (
 )
 from app.features.password_reset.entities import PasswordResetToken
 from app.features.password_reset.interfaces import IPasswordResetRepository
-from app.features.packages.entities import Package, PaginatedPackages
-from app.features.packages.interfaces import IPackageRepository
+from app.features.boxes.entities import Box, PaginatedBoxes
+from app.features.boxes.interfaces import IBoxRepository
+from app.features.products.entities import PaginatedProducts, Product
+from app.features.products.interfaces import IProductRepository
 
 
 def _now_naive() -> datetime:
@@ -38,7 +40,7 @@ class FakeUserRepository(IUserRepository):
 
     def seed(
         self,
-        username: str = "user",
+        name: str = "user",
         email: str = "user@example.com",
         password_hash: str = "hash",
         role: UserRole = UserRole.USER,
@@ -46,7 +48,7 @@ class FakeUserRepository(IUserRepository):
     ) -> User:
         user = User(
             id=uuid4(),
-            username=username,
+            name=name,
             email=email,
             password_hash=password_hash,
             role=role,
@@ -58,7 +60,7 @@ class FakeUserRepository(IUserRepository):
 
     async def add_user(
         self,
-        username: str = "user",
+        name: str = "user",
         email: str = "user@example.com",
         password: str = "password123",
         role: Optional[UserRole] = None,
@@ -68,7 +70,7 @@ class FakeUserRepository(IUserRepository):
         from app.core.security import hash_password
 
         return self.seed(
-            username=username,
+            name=name,
             email=email,
             password_hash=await hash_password(password),
             role=role or UserRole.USER,
@@ -95,7 +97,7 @@ class FakeUserRepository(IUserRepository):
 
     async def get_by_username(self, username: str) -> Optional[User]:
         for user in self.users.values():
-            if user.username == username:
+            if user.name == username:
                 return deepcopy(user)
         return None
 
@@ -285,30 +287,30 @@ class FakeRedis:
 
 
 
-class FakePackageRepository(IPackageRepository):
+class FakeBoxRepository(IBoxRepository):
     def __init__(self):
-        self.packages: dict[UUID, Package] = {}
+        self.boxes: dict[UUID, Box] = {}
 
-    async def create(self, package: Package) -> Package:
-        self.packages[package.id] = deepcopy(package)
-        return deepcopy(package)
+    async def create(self, box: Box) -> Box:
+        self.boxes[box.id] = deepcopy(box)
+        return deepcopy(box)
 
-    async def get_by_id(self, package_id: str) -> Optional[Package]:
+    async def get_by_id(self, box_id: str) -> Optional[Box]:
         try:
-            key = UUID(str(package_id))
+            key = UUID(str(box_id))
         except (ValueError, AttributeError):
             return None
-        package = self.packages.get(key)
-        return deepcopy(package) if package else None
+        box = self.boxes.get(key)
+        return deepcopy(box) if box else None
 
-    async def get_all(self, page: int, limit: int) -> PaginatedPackages:
+    async def get_all(self, page: int, limit: int) -> PaginatedBoxes:
         items = sorted(
-            self.packages.values(), key=lambda p: p.created_at, reverse=True
+            self.boxes.values(), key=lambda b: b.created_at, reverse=True
         )
         total = len(items)
         offset = (page - 1) * limit
-        return PaginatedPackages(
-            items=[deepcopy(p) for p in items[offset : offset + limit]],
+        return PaginatedBoxes(
+            items=[deepcopy(b) for b in items[offset : offset + limit]],
             total=total,
             page=page,
             limit=limit,
@@ -316,30 +318,76 @@ class FakePackageRepository(IPackageRepository):
 
     async def update(
         self,
-        package_id: str,
+        box_id: str,
         fields: dict,
-    ) -> Optional[Package]:
-        package = await self.get_by_id(package_id)
-        if not package:
+    ) -> Optional[Box]:
+        box = await self.get_by_id(box_id)
+        if not box:
             return None
         for key, value in fields.items():
-            setattr(package, key, value)
-        self.packages[package.id] = package
-        return deepcopy(package)
+            setattr(box, key, value)
+        self.boxes[box.id] = box
+        return deepcopy(box)
 
-    async def delete(self, package_id: str) -> None:
+    async def delete(self, box_id: str) -> None:
         try:
-            key = UUID(str(package_id))
+            key = UUID(str(box_id))
         except (ValueError, AttributeError):
             return
-        self.packages.pop(key, None)
+        self.boxes.pop(key, None)
 
-    async def adjust_stock(self, package_id: str, delta: int) -> Optional[Package]:
-        package = await self.get_by_id(package_id)
-        if not package:
+    async def adjust_stock(self, box_id: str, delta: int) -> Optional[Box]:
+        box = await self.get_by_id(box_id)
+        if not box:
             return None
-        if package.available_count + delta < 0:
+        if box.available_count + delta < 0:
             return None
-        package.available_count += delta
-        self.packages[package.id] = package
-        return deepcopy(package)
+        box.available_count += delta
+        self.boxes[box.id] = box
+        return deepcopy(box)
+
+
+class FakeProductRepository(IProductRepository):
+    def __init__(self):
+        self.products: dict[UUID, Product] = {}
+
+    async def create(self, product: Product) -> Product:
+        self.products[product.id] = deepcopy(product)
+        return deepcopy(product)
+
+    async def get_by_id(self, product_id: str) -> Optional[Product]:
+        try:
+            key = UUID(str(product_id))
+        except (ValueError, AttributeError):
+            return None
+        product = self.products.get(key)
+        return deepcopy(product) if product else None
+
+    async def get_all(self, page: int, limit: int) -> PaginatedProducts:
+        items = sorted(
+            self.products.values(), key=lambda p: p.created_at, reverse=True
+        )
+        total = len(items)
+        offset = (page - 1) * limit
+        return PaginatedProducts(
+            items=[deepcopy(p) for p in items[offset : offset + limit]],
+            total=total,
+            page=page,
+            limit=limit,
+        )
+
+    async def update(self, product_id: str, fields: dict) -> Optional[Product]:
+        product = await self.get_by_id(product_id)
+        if not product:
+            return None
+        for key, value in fields.items():
+            setattr(product, key, value)
+        self.products[product.id] = product
+        return deepcopy(product)
+
+    async def delete(self, product_id: str) -> None:
+        try:
+            key = UUID(str(product_id))
+        except (ValueError, AttributeError):
+            return
+        self.products.pop(key, None)
