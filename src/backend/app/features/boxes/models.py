@@ -1,20 +1,20 @@
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import DateTime, Float, Integer, func
+from sqlalchemy import DateTime, Float, Integer, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
 
 
-class PackageModel(Base):
-    __tablename__ = "packages"
-    __table_args__ = {"schema": "package_service"}
+class BoxModel(Base):
+    __tablename__ = "boxes"
+    __table_args__ = {"schema": "box_service"}
 
-    id: Mapped[str] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4, name="package_id"
-    )
+    id: Mapped[str] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(32), nullable=False)
+    type: Mapped[str] = mapped_column(String(16), nullable=False)
     width: Mapped[float] = mapped_column(Float, nullable=False)
     height: Mapped[float] = mapped_column(Float, nullable=False)
     depth: Mapped[float] = mapped_column(Float, nullable=False)

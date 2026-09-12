@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.core.exceptions import AppException
@@ -25,19 +27,20 @@ async def create_product(
 ):
     try:
         return await product_service.create_product(
-            product_id=body.id,
+            name=body.name,
+            destination=body.destination,
             x=body.x,
             y=body.y,
             z=body.z,
             weight=body.weight,
             quantity=body.quantity,
-            keep_upright=body.keep_upright,
-            stackable=body.stackable,
+            must_stay_upright=body.must_stay_upright,
+            is_stackable=body.is_stackable,
             max_top_load=body.max_top_load,
             minimum_support_ratio=body.minimum_support_ratio,
             incompatible_tags=body.incompatible_tags,
             allowed_rotations=body.allowed_rotations,
-            floor_only=body.floor_only,
+            is_floor_only=body.is_floor_only,
             tags=body.tags,
         )
     except AppException as e:
@@ -62,7 +65,7 @@ async def list_products(
 
 @router.get("/{product_id}", response_model=ProductResponse)
 async def get_product(
-    product_id: str,
+    product_id: UUID,
     current_user: CurrentUser = Depends(require_authenticated),
     product_service: ProductService = Depends(get_product_service),
 ):
@@ -74,7 +77,7 @@ async def get_product(
 
 @router.patch("/{product_id}", response_model=ProductResponse)
 async def update_product(
-    product_id: str,
+    product_id: UUID,
     body: ProductUpdateRequest,
     current_user: CurrentUser = Depends(require_authenticated),
     product_service: ProductService = Depends(get_product_service),
@@ -88,7 +91,7 @@ async def update_product(
 
 @router.delete("/{product_id}")
 async def delete_product(
-    product_id: str,
+    product_id: UUID,
     current_user: CurrentUser = Depends(require_authenticated),
     product_service: ProductService = Depends(get_product_service),
 ):

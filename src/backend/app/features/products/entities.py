@@ -1,23 +1,26 @@
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
+from uuid import UUID
 
 
 @dataclass
 class Product:
-    id: str
+    id: UUID
+    name: str
+    destination: str
     x: float
     y: float
     z: float
     weight: float
     quantity: int
-    keep_upright: bool
-    stackable: bool
+    must_stay_upright: bool
+    is_stackable: bool
     max_top_load: float
     minimum_support_ratio: float
     incompatible_tags: list[str]
     allowed_rotations: Optional[list[str]]
-    floor_only: bool
+    is_floor_only: bool
     tags: list[str]
     created_at: datetime
     updated_at: datetime

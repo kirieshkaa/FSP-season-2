@@ -1,2 +1,0 @@
-ALTER TABLE package_service.packages
-  ADD COLUMN IF NOT EXISTS wear_rate DOUBLE PRECISION NOT NULL DEFAULT 1.0;

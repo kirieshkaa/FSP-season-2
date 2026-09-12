@@ -8,13 +8,13 @@ BASE = "/api/v1"
 async def _login(client, identifier, password):
     return await client.post(
         f"{BASE}/auth/login",
-        json={"username": identifier, "password": password},
+        json={"name": identifier, "password": password},
     )
 
 
 async def _admin_token(client, container):
     await container.users.add_user(
-        username="admin",
+        name="admin",
         email="admin@example.com",
         password="adminpass123",
         role=UserRole.ADMIN,
@@ -27,7 +27,7 @@ async def _admin_token(client, container):
 
 async def _user_token(client, container, username="alice"):
     await container.users.add_user(
-        username=username,
+        name=username,
         email=f"{username}@example.com",
         status=UserStatus.APPROVED,
     )
@@ -52,7 +52,7 @@ class TestAdminAccessControl:
 
     async def test_admin_can_list_users(self, client, container):
         token = await _admin_token(client, container)
-        await container.users.add_user(username="bob", email="bob@example.com")
+        await container.users.add_user(name="bob", email="bob@example.com")
 
         response = await client.get(
             f"{BASE}/admin/users", headers={"Authorization": f"Bearer {token}"}
@@ -61,12 +61,12 @@ class TestAdminAccessControl:
         assert response.status_code == 200
         body = response.json()
         assert body["total"] == 2
-        assert {u["username"] for u in body["items"]} == {"admin", "bob"}
+        assert {u["name"] for u in body["items"]} == {"admin", "bob"}
 
     async def test_list_filters_by_status(self, client, container):
         token = await _admin_token(client, container)
         await container.users.add_user(
-            username="pending", email="p@example.com", status=UserStatus.PENDING
+            name="pending", email="p@example.com", status=UserStatus.PENDING
         )
 
         response = await client.get(
@@ -77,7 +77,7 @@ class TestAdminAccessControl:
 
         assert response.status_code == 200
         assert response.json()["total"] == 1
-        assert response.json()["items"][0]["username"] == "pending"
+        assert response.json()["items"][0]["name"] == "pending"
 
     async def test_list_rejects_invalid_status(self, client, container):
         token = await _admin_token(client, container)
@@ -94,7 +94,7 @@ class TestModerationActions:
     async def test_approve_pending_user(self, client, container):
         token = await _admin_token(client, container)
         pending = await container.users.add_user(
-            username="pending", email="p@example.com", status=UserStatus.PENDING
+            name="pending", email="p@example.com", status=UserStatus.PENDING
         )
 
         response = await client.post(
@@ -111,7 +111,7 @@ class TestModerationActions:
 
     async def test_reject_user(self, client, container):
         token = await _admin_token(client, container)
-        user = await container.users.add_user(username="bob", email="bob@example.com")
+        user = await container.users.add_user(name="bob", email="bob@example.com")
 
         response = await client.post(
             f"{BASE}/admin/users/{user.id}/actions",
@@ -126,7 +126,7 @@ class TestModerationActions:
 
     async def test_block_then_unblock(self, client, container):
         token = await _admin_token(client, container)
-        user = await container.users.add_user(username="bob", email="bob@example.com")
+        user = await container.users.add_user(name="bob", email="bob@example.com")
 
         blocked = await client.post(
             f"{BASE}/admin/users/{user.id}/actions",
@@ -150,7 +150,7 @@ class TestModerationActions:
 
     async def test_invalid_action_rejected(self, client, container):
         token = await _admin_token(client, container)
-        user = await container.users.add_user(username="bob", email="bob@example.com")
+        user = await container.users.add_user(name="bob", email="bob@example.com")
 
         response = await client.post(
             f"{BASE}/admin/users/{user.id}/actions",
@@ -165,7 +165,7 @@ class TestModerationActions:
 
     async def test_delete_user(self, client, container):
         token = await _admin_token(client, container)
-        user = await container.users.add_user(username="bob", email="bob@example.com")
+        user = await container.users.add_user(name="bob", email="bob@example.com")
 
         response = await client.delete(
             f"{BASE}/admin/users/{user.id}",

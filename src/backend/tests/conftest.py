@@ -40,12 +40,12 @@ from app.features.password_reset.deps import (
     get_email_sender,
     get_password_reset_repo,
 )
-from app.features.packages.deps import get_package_repo
+from app.features.boxes.deps import get_box_repo
 from app.features.products.deps import get_product_repo
 from tests.fakes import (
     FakeAccessTokenRepository,
     FakeEmailSender,
-    FakePackageRepository,
+    FakeBoxRepository,
     FakePasswordResetRepository,
     FakeProductRepository,
     FakeRedis,
@@ -76,7 +76,7 @@ class FakeContainer:
         self.access_tokens = FakeAccessTokenRepository()
         self.password_resets = FakePasswordResetRepository()
         self.email = FakeEmailSender()
-        self.packages = FakePackageRepository()
+        self.boxes = FakeBoxRepository()
         self.products = FakeProductRepository()
 
 
@@ -113,7 +113,7 @@ def client(container):
         lambda: container.password_resets
     )
     app.dependency_overrides[get_email_sender] = lambda: container.email
-    app.dependency_overrides[get_package_repo] = lambda: container.packages
+    app.dependency_overrides[get_box_repo] = lambda: container.boxes
     app.dependency_overrides[get_product_repo] = lambda: container.products
 
     # get_db is used by health + repo factory fallbacks.

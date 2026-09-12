@@ -8,13 +8,13 @@ BASE = "/api/v1"
 async def _login(client, identifier, password):
     return await client.post(
         f"{BASE}/auth/login",
-        json={"username": identifier, "password": password},
+        json={"name": identifier, "password": password},
     )
 
 
 async def _token_for(client, container, username, role):
     await container.users.add_user(
-        username=username,
+        name=username,
         email=f"{username}@example.com",
         password="password123",
         role=role,
@@ -31,7 +31,8 @@ def _h(token):
 
 async def _create_product(client, token, **overrides):
     payload = {
-        "id": "SKU-001",
+        "name": "widget",
+        "destination": "warehouse-a",
         "x": 10.0,
         "y": 20.0,
         "z": 30.0,
@@ -55,7 +56,8 @@ class TestProductAccess:
         token = await _token_for(client, container, "user1", UserRole.USER)
         response = await _create_product(client, token)
         assert response.status_code == 201
-        assert response.json()["id"] == "SKU-001"
+        assert response.json()["id"]
+        assert response.json()["x"] == 10.0
 
 
 class TestProductCrud:
@@ -74,14 +76,32 @@ class TestProductCrud:
         token = await _token_for(client, container, "adm", UserRole.ADMIN)
         body = (await _create_product(client, token)).json()
 
-        assert body["keep_upright"] is False
-        assert body["stackable"] is True
-        assert body["floor_only"] is False
+        assert body["name"] == "widget"
+        assert body["destination"] == "warehouse-a"
+        assert body["must_stay_upright"] is False
+        assert body["is_stackable"] is True
+        assert body["is_floor_only"] is False
         assert body["max_top_load"] == 0
         assert body["minimum_support_ratio"] == 0
         assert body["incompatible_tags"] == []
         assert body["tags"] == []
         assert body["allowed_rotations"] is None
+
+    async def test_name_and_destination_can_be_updated(self, client, container):
+        token = await _token_for(client, container, "adm", UserRole.ADMIN)
+        created = (await _create_product(client, token)).json()
+
+        response = await client.patch(
+            f"{BASE}/products/{created['id']}",
+            json={"name": "renamed-widget", "destination": "warehouse-b"},
+            headers=_h(token),
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["name"] == "renamed-widget"
+        assert body["destination"] == "warehouse-b"
+        assert body["x"] == created["x"]
 
     async def test_tags_and_rotations_roundtrip(self, client, container):
         token = await _token_for(client, container, "adm", UserRole.ADMIN)
@@ -89,38 +109,37 @@ class TestProductCrud:
             await _create_product(
                 client,
                 token,
-                id="SKU-777",
                 tags=["fragile", "electronics"],
                 incompatible_tags=["liquid"],
                 allowed_rotations=["up", "side"],
-                keep_upright=True,
-                floor_only=True,
+                must_stay_upright=True,
+                is_floor_only=True,
             )
         ).json()
 
         assert body["tags"] == ["fragile", "electronics"]
         assert body["incompatible_tags"] == ["liquid"]
         assert body["allowed_rotations"] == ["up", "side"]
-        assert body["keep_upright"] is True
-        assert body["floor_only"] is True
-
-    async def test_duplicate_id_is_400(self, client, container):
-        token = await _token_for(client, container, "adm", UserRole.ADMIN)
-        await _create_product(client, token)
-
-        response = await _create_product(client, token)
-
-        assert response.status_code == 400
+        assert body["must_stay_upright"] is True
+        assert body["is_floor_only"] is True
 
     async def test_get_unknown_is_404(self, client, container):
         token = await _token_for(client, container, "adm", UserRole.ADMIN)
-        response = await client.get(f"{BASE}/products/NOPE", headers=_h(token))
+        response = await client.get(
+            f"{BASE}/products/00000000-0000-0000-0000-000000000000",
+            headers=_h(token),
+        )
         assert response.status_code == 404
+
+    async def test_malformed_id_is_400(self, client, container):
+        token = await _token_for(client, container, "adm", UserRole.ADMIN)
+        response = await client.get(f"{BASE}/products/NOPE", headers=_h(token))
+        assert response.status_code == 400
 
     async def test_list_is_paginated(self, client, container):
         token = await _token_for(client, container, "adm", UserRole.ADMIN)
         for i in range(3):
-            await _create_product(client, token, id=f"SKU-{i:03d}")
+            await _create_product(client, token, x=float(i + 1))
 
         response = await client.get(
             f"{BASE}/products", params={"page": 1, "limit": 2}, headers=_h(token)
@@ -139,14 +158,14 @@ class TestProductCrud:
 
         response = await client.patch(
             f"{BASE}/products/{created['id']}",
-            json={"weight": 99.0, "stackable": False},
+            json={"weight": 99.0, "is_stackable": False},
             headers=_h(token),
         )
 
         assert response.status_code == 200
         body = response.json()
         assert body["weight"] == 99.0
-        assert body["stackable"] is False
+        assert body["is_stackable"] is False
         assert body["x"] == created["x"]
 
     async def test_update_can_clear_rotations(self, client, container):

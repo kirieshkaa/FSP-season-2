@@ -11,9 +11,7 @@ class PasswordResetTokenModel(Base):
     __tablename__ = "password_reset_tokens"
     __table_args__ = {"schema": "auth_service"}
 
-    id: Mapped[int] = mapped_column(
-        primary_key=True, autoincrement=True, name="reset_token_id"
-    )
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[str] = mapped_column(UUID(as_uuid=True), nullable=False)
     reset_token: Mapped[str] = mapped_column(
         UUID(as_uuid=True), unique=True, nullable=False

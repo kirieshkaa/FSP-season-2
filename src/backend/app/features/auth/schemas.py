@@ -8,7 +8,7 @@ from app.features.auth.entities import UserRole, UserStatus
 
 
 class RegisterRequest(BaseModel):
-    username: str = Field(..., min_length=3, max_length=50)
+    name: str = Field(..., min_length=3, max_length=50)
     email: EmailStr
     password: str = Field(..., min_length=8)
 
@@ -18,13 +18,13 @@ class RegisterResponse(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    username: Optional[str] = None
+    name: Optional[str] = None
     email: Optional[EmailStr] = None
     password: str
 
     @property
     def has_credentials(self) -> bool:
-        return self.username is not None or self.email is not None
+        return self.name is not None or self.email is not None
 
 
 class LoginResponse(BaseModel):
@@ -72,7 +72,7 @@ class UpdateEmailResponse(BaseModel):
 
 class UserProfileResponse(BaseModel):
     id: str
-    username: str
+    name: str
     email_masked: str
     role: str
     status: str
@@ -81,7 +81,7 @@ class UserProfileResponse(BaseModel):
 
 class UserResponse(BaseModel):
     id: UUID
-    username: str
+    name: str
     email: str
     role: UserRole
     status: UserStatus

@@ -21,7 +21,7 @@ class UserRepository(IUserRepository):
     def _to_entity(self, model: UserModel) -> User:
         return User(
             id=self._to_uuid(model.id),
-            username=model.username,
+            name=model.name,
             email=model.email,
             password_hash=model.password_hash,
             role=model.role,
@@ -32,7 +32,7 @@ class UserRepository(IUserRepository):
     async def create(self, user: User) -> User:
         user_model = UserModel(
             id=uuid4(),
-            username=user.username,
+            name=user.name,
             email=user.email,
             password_hash=user.password_hash,
             role=user.role,
@@ -52,7 +52,7 @@ class UserRepository(IUserRepository):
 
     async def get_by_username(self, username: str) -> Optional[User]:
         result = await self._session.execute(
-            select(UserModel).where(UserModel.username == username)
+            select(UserModel).where(UserModel.name == username)
         )
         user_model = result.scalar_one_or_none()
         return self._to_entity(user_model) if user_model else None

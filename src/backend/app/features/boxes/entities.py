@@ -4,8 +4,10 @@ from uuid import UUID
 
 
 @dataclass
-class Package:
+class Box:
     id: UUID
+    name: str
+    type: str
     width: float
     height: float
     depth: float
@@ -17,8 +19,8 @@ class Package:
 
 
 @dataclass
-class PaginatedPackages:
-    items: list[Package]
+class PaginatedBoxes:
+    items: list[Box]
     total: int
     page: int
     limit: int

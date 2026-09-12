@@ -19,7 +19,7 @@ from app.features.auth.refresh_token_repository import RefreshTokenRepository
 from app.features.auth.repository import UserRepository
 from app.features.auth.router import router as auth_router
 from app.features.health.router import router as health_router
-from app.features.packages.router import router as packages_router
+from app.features.boxes.router import router as boxes_router
 from app.features.password_reset.repository import PasswordResetRepository
 from app.features.password_reset.router import router as password_reset_router
 from app.features.products.router import router as products_router
@@ -42,7 +42,7 @@ async def lifespan(app: FastAPI):
         if not existing_admin:
             admin_user = User(
                 id=uuid4(),
-                username=config.admin.username,
+                name=config.admin.username,
                 email=config.admin.email,
                 password_hash=await hash_password(config.admin.password),
                 role=UserRole.ADMIN,
@@ -76,8 +76,8 @@ app = FastAPI(
             "description": "Auth service - user moderation and account settings.",
         },
         {
-            "name": "packages",
-            "description": "Package service - packaging catalog and stock.",
+            "name": "boxes",
+            "description": "Box service - packaging catalog and stock.",
         },
         {
             "name": "products",
@@ -132,7 +132,7 @@ app.add_middleware(
 app.include_router(health_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(password_reset_router, prefix="/api/v1")
-app.include_router(packages_router, prefix="/api/v1")
+app.include_router(boxes_router, prefix="/api/v1")
 app.include_router(products_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
 

@@ -8,7 +8,7 @@ BASE = "/api/v1"
 async def _login(client, identifier, password):
     return await client.post(
         f"{BASE}/auth/login",
-        json={"username": identifier, "password": password},
+        json={"name": identifier, "password": password},
     )
 
 
@@ -22,7 +22,7 @@ def _set_cookie_value(response, name="refresh_token") -> str | None:
 
 async def _approved_token(client, container, username="alice", password="password123"):
     user = await container.users.add_user(
-        username=username,
+        name=username,
         email=f"{username}@example.com",
         password=password,
         status=UserStatus.APPROVED,
@@ -37,7 +37,7 @@ class TestRegisterEndpoint:
         response = await client.post(
             f"{BASE}/auth/register",
             json={
-                "username": "alice",
+                "name": "alice",
                 "email": "alice@example.com",
                 "password": "password123",
             },
@@ -48,7 +48,7 @@ class TestRegisterEndpoint:
     async def test_register_validation_error_is_400(self, client):
         response = await client.post(
             f"{BASE}/auth/register",
-            json={"username": "ab", "email": "bad", "password": "short"},
+            json={"name": "ab", "email": "bad", "password": "short"},
         )
         assert response.status_code == 400
         body = response.json()
@@ -56,11 +56,11 @@ class TestRegisterEndpoint:
         assert "message" in body
 
     async def test_register_duplicate_is_400(self, client, container):
-        await container.users.add_user(username="alice", email="alice@example.com")
+        await container.users.add_user(name="alice", email="alice@example.com")
         response = await client.post(
             f"{BASE}/auth/register",
             json={
-                "username": "alice",
+                "name": "alice",
                 "email": "other@example.com",
                 "password": "password123",
             },
@@ -112,7 +112,7 @@ class TestProtectedEndpoints:
 
         assert response.status_code == 200
         body = response.json()
-        assert body["username"] == "alice"
+        assert body["name"] == "alice"
         assert body["email_masked"] == "al***@example.com"
         assert body["role"] == "user"
 
@@ -232,7 +232,7 @@ class TestPasswordResetEndpoint:
         assert response.status_code == 200
 
     async def test_reset_with_valid_token_updates_password(self, client, container):
-        await container.users.add_user(username="alice", email="alice@example.com")
+        await container.users.add_user(name="alice", email="alice@example.com")
         await client.post(
             f"{BASE}/reset-password", json={"email": "alice@example.com"}
         )

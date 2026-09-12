@@ -1,4 +1,5 @@
 from typing import Optional
+from uuid import UUID
 
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,18 +16,20 @@ class ProductRepository(IProductRepository):
     def _to_entity(self, model: ProductModel) -> Product:
         return Product(
             id=model.id,
+            name=model.name,
+            destination=model.destination,
             x=model.x,
             y=model.y,
             z=model.z,
             weight=model.weight,
             quantity=model.quantity,
-            keep_upright=model.keep_upright,
-            stackable=model.stackable,
+            must_stay_upright=model.must_stay_upright,
+            is_stackable=model.is_stackable,
             max_top_load=model.max_top_load,
             minimum_support_ratio=model.minimum_support_ratio,
             incompatible_tags=model.incompatible_tags,
             allowed_rotations=model.allowed_rotations,
-            floor_only=model.floor_only,
+            is_floor_only=model.is_floor_only,
             tags=model.tags,
             created_at=model.created_at,
             updated_at=model.updated_at,
@@ -35,18 +38,20 @@ class ProductRepository(IProductRepository):
     async def create(self, product: Product) -> Product:
         model = ProductModel(
             id=product.id,
+            name=product.name,
+            destination=product.destination,
             x=product.x,
             y=product.y,
             z=product.z,
             weight=product.weight,
             quantity=product.quantity,
-            keep_upright=product.keep_upright,
-            stackable=product.stackable,
+            must_stay_upright=product.must_stay_upright,
+            is_stackable=product.is_stackable,
             max_top_load=product.max_top_load,
             minimum_support_ratio=product.minimum_support_ratio,
             incompatible_tags=product.incompatible_tags,
             allowed_rotations=product.allowed_rotations,
-            floor_only=product.floor_only,
+            is_floor_only=product.is_floor_only,
             tags=product.tags,
         )
         self._session.add(model)
@@ -54,7 +59,7 @@ class ProductRepository(IProductRepository):
         await self._session.refresh(model)
         return self._to_entity(model)
 
-    async def get_by_id(self, product_id: str) -> Optional[Product]:
+    async def get_by_id(self, product_id: UUID) -> Optional[Product]:
         result = await self._session.execute(
             select(ProductModel).where(ProductModel.id == product_id)
         )
@@ -83,7 +88,7 @@ class ProductRepository(IProductRepository):
             limit=limit,
         )
 
-    async def update(self, product_id: str, fields: dict) -> Optional[Product]:
+    async def update(self, product_id: UUID, fields: dict) -> Optional[Product]:
         payload = {**fields, "updated_at": func.now()}
         await self._session.execute(
             update(ProductModel).where(ProductModel.id == product_id).values(**payload)
@@ -91,7 +96,7 @@ class ProductRepository(IProductRepository):
         await self._session.commit()
         return await self.get_by_id(product_id)
 
-    async def delete(self, product_id: str) -> None:
+    async def delete(self, product_id: UUID) -> None:
         await self._session.execute(
             delete(ProductModel).where(ProductModel.id == product_id)
         )

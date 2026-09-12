@@ -43,12 +43,12 @@ class AuthService:
         if not re.match(pattern, email):
             raise InvalidEmailError()
 
-    async def register(self, username: str, email: str, password: str) -> None:
+    async def register(self, name: str, email: str, password: str) -> None:
         self._validate_email(email)
 
-        existing_user = await self._user_repo.get_by_username(username)
+        existing_user = await self._user_repo.get_by_username(name)
         if existing_user:
-            raise UserAlreadyExistsError("username")
+            raise UserAlreadyExistsError("name")
 
         existing_user = await self._user_repo.get_by_email(email)
         if existing_user:
@@ -64,7 +64,7 @@ class AuthService:
 
         user = User(
             id=uuid4(),
-            username=username,
+            name=name,
             email=email,
             password_hash=password_hash,
             role=UserRole.USER,
@@ -75,15 +75,15 @@ class AuthService:
         await self._user_repo.create(user)
 
     async def login(
-        self, username: Optional[str], email: Optional[str], password: str
+        self, name: Optional[str], email: Optional[str], password: str
     ) -> Tokens:
         user: Optional[User] = None
 
         if email:
             self._validate_email(email)
             user = await self._user_repo.get_by_email(email)
-        elif username:
-            user = await self._user_repo.get_by_username(username)
+        elif name:
+            user = await self._user_repo.get_by_username(name)
         else:
             raise InvalidCredentialsError()
 
@@ -96,7 +96,7 @@ class AuthService:
         if not await verify_password(password, user.password_hash):
             raise InvalidCredentialsError()
 
-        return await self._create_tokens(user.id, user.username, user.role.value)
+        return await self._create_tokens(user.id, user.name, user.role.value)
 
     async def change_password(
         self, user_id: str, old_password: str, new_password: str
@@ -122,7 +122,7 @@ class AuthService:
 
         return {
             "id": user.id,
-            "username": user.username,
+            "name": user.name,
             "email": email,
             "email_masked": email_masked,
             "role": user.role.value,
@@ -160,7 +160,7 @@ class AuthService:
             raise InvalidTokenError()
 
         user_id_str = payload.get("user_id")
-        username = payload.get("username", "")
+        name = payload.get("name", "")
         role = payload.get("role", "user")
         user_id = UUID(user_id_str)
 
@@ -168,7 +168,7 @@ class AuthService:
         if not stored_token:
             raise InvalidTokenError()
 
-        return await self._create_tokens(user_id, username, role)
+        return await self._create_tokens(user_id, name, role)
 
     async def logout(self, refresh_token: str) -> None:
         payload = jwt_service.verify_refresh_token(refresh_token)
@@ -176,14 +176,14 @@ class AuthService:
             await self._refresh_token_repo.delete(refresh_token)
 
     async def _create_tokens(
-        self, user_id: UUID, username: str, role: str
+        self, user_id: UUID, name: str, role: str
     ) -> Tokens:
         user_id_str = str(user_id)
         access_token, access_token_id = jwt_service.create_access_token(
-            user_id_str, username, role
+            user_id_str, name, role
         )
         refresh_token, refresh_token_id = jwt_service.create_refresh_token(
-            user_id_str, username, role
+            user_id_str, name, role
         )
 
         config = get_config()

@@ -1,4 +1,4 @@
-"""Tests for package management endpoints and the approval toggle."""
+"""Tests for box management endpoints and the approval toggle."""
 
 from app.features.auth.entities import UserRole, UserStatus
 
@@ -8,13 +8,13 @@ BASE = "/api/v1"
 async def _login(client, identifier, password):
     return await client.post(
         f"{BASE}/auth/login",
-        json={"username": identifier, "password": password},
+        json={"name": identifier, "password": password},
     )
 
 
 async def _token_for(client, container, username, role):
     await container.users.add_user(
-        username=username,
+        name=username,
         email=f"{username}@example.com",
         password="password123",
         role=role,
@@ -29,8 +29,10 @@ def _h(token):
     return {"Authorization": f"Bearer {token}"}
 
 
-async def _create_package(client, token, **overrides):
+async def _create_box(client, token, **overrides):
     payload = {
+        "name": "standard-carton",
+        "type": "cardboard",
         "width": 10.0,
         "height": 20.0,
         "depth": 30.0,
@@ -38,51 +40,78 @@ async def _create_package(client, token, **overrides):
         "available_count": 4,
     }
     payload.update(overrides)
-    return await client.post(f"{BASE}/packages", json=payload, headers=_h(token))
+    return await client.post(f"{BASE}/boxes", json=payload, headers=_h(token))
 
 
-class TestPackageAccess:
+class TestBoxAccess:
     async def test_requires_authentication(self, client):
-        assert (await client.get(f"{BASE}/packages")).status_code == 401
+        assert (await client.get(f"{BASE}/boxes")).status_code == 401
 
     async def test_plain_user_can_read(self, client, container):
         token = await _token_for(client, container, "user1", UserRole.USER)
-        response = await client.get(f"{BASE}/packages", headers=_h(token))
+        response = await client.get(f"{BASE}/boxes", headers=_h(token))
         assert response.status_code == 200
 
     async def test_plain_user_can_create(self, client, container):
         token = await _token_for(client, container, "user1", UserRole.USER)
-        response = await _create_package(client, token)
+        response = await _create_box(client, token)
         assert response.status_code == 201
         assert response.json()["available_count"] == 4
 
     async def test_admin_can_create(self, client, container):
         token = await _token_for(client, container, "adm", UserRole.ADMIN)
-        assert (await _create_package(client, token)).status_code == 201
+        assert (await _create_box(client, token)).status_code == 201
+
+    async def test_name_and_type_roundtrip(self, client, container):
+        token = await _token_for(client, container, "adm", UserRole.ADMIN)
+
+        body = (await _create_box(client, token)).json()
+        assert body["name"] == "standard-carton"
+        assert body["type"] == "cardboard"
+
+        custom = (
+            await _create_box(client, token, name="heavy-pallet", type="wood")
+        ).json()
+        assert custom["name"] == "heavy-pallet"
+        assert custom["type"] == "wood"
+
+    async def test_name_and_type_stored_via_update(self, client, container):
+        token = await _token_for(client, container, "adm", UserRole.ADMIN)
+        created = (await _create_box(client, token)).json()
+
+        response = await client.patch(
+            f"{BASE}/boxes/{created['id']}",
+            json={"name": "renamed", "type": "metal"},
+            headers=_h(token),
+        )
+
+        assert response.status_code == 200
+        assert response.json()["name"] == "renamed"
+        assert response.json()["type"] == "metal"
 
     async def test_wear_rate_defaults_and_roundtrips(self, client, container):
         token = await _token_for(client, container, "adm", UserRole.ADMIN)
 
-        default = (await _create_package(client, token)).json()
+        default = (await _create_box(client, token)).json()
         assert default["wear_rate"] == 1.0
 
-        worn = (await _create_package(client, token, wear_rate=0.4)).json()
+        worn = (await _create_box(client, token, wear_rate=0.4)).json()
         assert worn["wear_rate"] == 0.4
 
     async def test_wear_rate_out_of_range_is_400(self, client, container):
         token = await _token_for(client, container, "adm", UserRole.ADMIN)
 
-        assert (await _create_package(client, token, wear_rate=1.5)).status_code == 400
-        assert (await _create_package(client, token, wear_rate=-0.1)).status_code == 400
+        assert (await _create_box(client, token, wear_rate=1.5)).status_code == 400
+        assert (await _create_box(client, token, wear_rate=-0.1)).status_code == 400
 
 
-class TestPackageCrud:
+class TestBoxCrud:
     async def test_get_by_id(self, client, container):
         token = await _token_for(client, container, "adm", UserRole.ADMIN)
-        created = (await _create_package(client, token)).json()
+        created = (await _create_box(client, token)).json()
 
         response = await client.get(
-            f"{BASE}/packages/{created['id']}", headers=_h(token)
+            f"{BASE}/boxes/{created['id']}", headers=_h(token)
         )
 
         assert response.status_code == 200
@@ -91,7 +120,7 @@ class TestPackageCrud:
     async def test_get_unknown_is_404(self, client, container):
         token = await _token_for(client, container, "adm", UserRole.ADMIN)
         response = await client.get(
-            f"{BASE}/packages/{'0' * 8}-0000-0000-0000-000000000000",
+            f"{BASE}/boxes/{'0' * 8}-0000-0000-0000-000000000000",
             headers=_h(token),
         )
         assert response.status_code == 404
@@ -99,10 +128,10 @@ class TestPackageCrud:
     async def test_list_is_paginated(self, client, container):
         token = await _token_for(client, container, "adm", UserRole.ADMIN)
         for i in range(3):
-            await _create_package(client, token, width=float(i + 1))
+            await _create_box(client, token, width=float(i + 1))
 
         response = await client.get(
-            f"{BASE}/packages", params={"page": 1, "limit": 2}, headers=_h(token)
+            f"{BASE}/boxes", params={"page": 1, "limit": 2}, headers=_h(token)
         )
 
         assert response.status_code == 200
@@ -112,12 +141,12 @@ class TestPackageCrud:
         assert body["page"] == 1
         assert body["limit"] == 2
 
-    async def test_update_package(self, client, container):
+    async def test_update_box(self, client, container):
         token = await _token_for(client, container, "adm", UserRole.ADMIN)
-        created = (await _create_package(client, token)).json()
+        created = (await _create_box(client, token)).json()
 
         response = await client.patch(
-            f"{BASE}/packages/{created['id']}",
+            f"{BASE}/boxes/{created['id']}",
             json={"width": 99.0, "height": 1.0, "depth": 1.0, "max_weight": 1.0},
             headers=_h(token),
         )
@@ -127,10 +156,10 @@ class TestPackageCrud:
 
     async def test_update_only_count(self, client, container):
         token = await _token_for(client, container, "adm", UserRole.ADMIN)
-        created = (await _create_package(client, token, available_count=4)).json()
+        created = (await _create_box(client, token, available_count=4)).json()
 
         response = await client.patch(
-            f"{BASE}/packages/{created['id']}",
+            f"{BASE}/boxes/{created['id']}",
             json={"available_count": 42},
             headers=_h(token),
         )
@@ -142,10 +171,10 @@ class TestPackageCrud:
 
     async def test_update_partial_single_field(self, client, container):
         token = await _token_for(client, container, "adm", UserRole.ADMIN)
-        created = (await _create_package(client, token, available_count=4)).json()
+        created = (await _create_box(client, token, available_count=4)).json()
 
         response = await client.patch(
-            f"{BASE}/packages/{created['id']}",
+            f"{BASE}/boxes/{created['id']}",
             json={"width": 77.0},
             headers=_h(token),
         )
@@ -158,39 +187,39 @@ class TestPackageCrud:
 
     async def test_update_rejects_negative_count(self, client, container):
         token = await _token_for(client, container, "adm", UserRole.ADMIN)
-        created = (await _create_package(client, token, available_count=4)).json()
+        created = (await _create_box(client, token, available_count=4)).json()
 
         response = await client.patch(
-            f"{BASE}/packages/{created['id']}",
+            f"{BASE}/boxes/{created['id']}",
             json={"available_count": -1},
             headers=_h(token),
         )
 
         assert response.status_code == 400
-        assert (await container.packages.get_by_id(created["id"])).available_count == 4
+        assert (await container.boxes.get_by_id(created["id"])).available_count == 4
 
-    async def test_delete_package(self, client, container):
+    async def test_delete_box(self, client, container):
         token = await _token_for(client, container, "adm", UserRole.ADMIN)
-        created = (await _create_package(client, token)).json()
+        created = (await _create_box(client, token)).json()
 
         response = await client.delete(
-            f"{BASE}/packages/{created['id']}", headers=_h(token)
+            f"{BASE}/boxes/{created['id']}", headers=_h(token)
         )
 
         assert response.status_code == 200
-        assert await container.packages.get_by_id(created["id"]) is None
+        assert await container.boxes.get_by_id(created["id"]) is None
 
     async def test_user_can_update_and_delete(self, client, container):
         user = await _token_for(client, container, "user1", UserRole.USER)
-        created = (await _create_package(client, user)).json()
+        created = (await _create_box(client, user)).json()
 
         updated = await client.patch(
-            f"{BASE}/packages/{created['id']}",
+            f"{BASE}/boxes/{created['id']}",
             json={"width": 1.0, "height": 1.0, "depth": 1.0, "max_weight": 1.0},
             headers=_h(user),
         )
         deleted = await client.delete(
-            f"{BASE}/packages/{created['id']}", headers=_h(user)
+            f"{BASE}/boxes/{created['id']}", headers=_h(user)
         )
 
         assert updated.status_code == 200
@@ -200,15 +229,15 @@ class TestPackageCrud:
 class TestStockAdjust:
     async def test_add_and_remove_bulk(self, client, container):
         token = await _token_for(client, container, "adm", UserRole.ADMIN)
-        first = (await _create_package(client, token, available_count=1)).json()
-        second = (await _create_package(client, token, available_count=10)).json()
+        first = (await _create_box(client, token, available_count=1)).json()
+        second = (await _create_box(client, token, available_count=10)).json()
 
         response = await client.post(
-            f"{BASE}/packages/stock-adjust",
+            f"{BASE}/boxes/stock-adjust",
             json={
                 "items": [
-                    {"package_id": first["id"], "delta": 5},
-                    {"package_id": second["id"], "delta": -4},
+                    {"id": first["id"], "delta": 5},
+                    {"id": second["id"], "delta": -4},
                 ]
             },
             headers=_h(token),
@@ -221,41 +250,41 @@ class TestStockAdjust:
 
     async def test_remove_below_zero_is_400(self, client, container):
         token = await _token_for(client, container, "adm", UserRole.ADMIN)
-        created = (await _create_package(client, token, available_count=3)).json()
+        created = (await _create_box(client, token, available_count=3)).json()
 
         response = await client.post(
-            f"{BASE}/packages/stock-adjust",
-            json={"items": [{"package_id": created["id"], "delta": -4}]},
+            f"{BASE}/boxes/stock-adjust",
+            json={"items": [{"id": created["id"], "delta": -4}]},
             headers=_h(token),
         )
 
         assert response.status_code == 400
-        unchanged = await container.packages.get_by_id(created["id"])
+        unchanged = await container.boxes.get_by_id(created["id"])
         assert unchanged.available_count == 3
 
     async def test_zero_delta_is_400(self, client, container):
         token = await _token_for(client, container, "adm", UserRole.ADMIN)
-        created = (await _create_package(client, token)).json()
+        created = (await _create_box(client, token)).json()
 
         response = await client.post(
-            f"{BASE}/packages/stock-adjust",
-            json={"items": [{"package_id": created["id"], "delta": 0}]},
+            f"{BASE}/boxes/stock-adjust",
+            json={"items": [{"id": created["id"], "delta": 0}]},
             headers=_h(token),
         )
 
         assert response.status_code == 400
 
-    async def test_unknown_package_is_404_and_nothing_applied(self, client, container):
+    async def test_unknown_box_is_404_and_nothing_applied(self, client, container):
         token = await _token_for(client, container, "adm", UserRole.ADMIN)
-        created = (await _create_package(client, token, available_count=10)).json()
+        created = (await _create_box(client, token, available_count=10)).json()
 
         response = await client.post(
-            f"{BASE}/packages/stock-adjust",
+            f"{BASE}/boxes/stock-adjust",
             json={
                 "items": [
-                    {"package_id": created["id"], "delta": 5},
+                    {"id": created["id"], "delta": 5},
                     {
-                        "package_id": "00000000-0000-0000-0000-000000000000",
+                        "id": "00000000-0000-0000-0000-000000000000",
                         "delta": 1,
                     },
                 ]
@@ -264,47 +293,47 @@ class TestStockAdjust:
         )
 
         assert response.status_code == 404
-        unchanged = await container.packages.get_by_id(created["id"])
+        unchanged = await container.boxes.get_by_id(created["id"])
         assert unchanged.available_count == 10
 
     async def test_user_can_adjust_stock(self, client, container):
         user = await _token_for(client, container, "user1", UserRole.USER)
-        created = (await _create_package(client, user)).json()
+        created = (await _create_box(client, user)).json()
 
         response = await client.post(
-            f"{BASE}/packages/stock-adjust",
-            json={"items": [{"package_id": created["id"], "delta": 1}]},
+            f"{BASE}/boxes/stock-adjust",
+            json={"items": [{"id": created["id"], "delta": 1}]},
             headers=_h(user),
         )
         assert response.status_code == 200
 
 
 class TestApprovalToggle:
-    async def test_admin_can_read_and_flip_require_approval(self, client, container):
+    async def test_admin_can_read_and_flip_is_approval_required(self, client, container):
         token = await _token_for(client, container, "adm", UserRole.ADMIN)
 
         initial = await client.get(
             f"{BASE}/admin/settings/require-approval", headers=_h(token)
         )
-        assert initial.json()["require_approval"] is True
+        assert initial.json()["is_approval_required"] is True
 
         flipped = await client.put(
             f"{BASE}/admin/settings/require-approval",
-            json={"require_approval": False},
+            json={"is_approval_required": False},
             headers=_h(token),
         )
-        assert flipped.json()["require_approval"] is False
+        assert flipped.json()["is_approval_required"] is False
 
         after = await client.get(
             f"{BASE}/admin/settings/require-approval", headers=_h(token)
         )
-        assert after.json()["require_approval"] is False
+        assert after.json()["is_approval_required"] is False
 
     async def test_non_admin_cannot_flip(self, client, container):
         token = await _token_for(client, container, "user1", UserRole.USER)
         response = await client.put(
             f"{BASE}/admin/settings/require-approval",
-            json={"require_approval": False},
+            json={"is_approval_required": False},
             headers=_h(token),
         )
         assert response.status_code == 403
@@ -313,14 +342,14 @@ class TestApprovalToggle:
         admin = await _token_for(client, container, "adm", UserRole.ADMIN)
         await client.put(
             f"{BASE}/admin/settings/require-approval",
-            json={"require_approval": False},
+            json={"is_approval_required": False},
             headers=_h(admin),
         )
 
         await client.post(
             f"{BASE}/auth/register",
             json={
-                "username": "newbie",
+                "name": "newbie",
                 "email": "newbie@example.com",
                 "password": "password123",
             },
@@ -334,7 +363,7 @@ class TestApprovalToggle:
         await client.post(
             f"{BASE}/auth/register",
             json={
-                "username": "newbie",
+                "name": "newbie",
                 "email": "newbie@example.com",
                 "password": "password123",
             },

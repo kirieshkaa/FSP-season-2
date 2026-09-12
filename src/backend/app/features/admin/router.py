@@ -112,7 +112,7 @@ async def get_require_approval(
     current_user: CurrentUser = Depends(get_current_admin),
 ):
     required = await account_settings.is_approval_required()
-    return {"require_approval": required}
+    return {"is_approval_required": required}
 
 
 @router.put("/settings/require-approval")
@@ -120,5 +120,5 @@ async def set_require_approval(
     body: RequireApprovalRequest,
     current_user: CurrentUser = Depends(get_current_admin),
 ):
-    required = await account_settings.set_approval_required(body.require_approval)
-    return {"require_approval": required}
+    required = await account_settings.set_approval_required(body.is_approval_required)
+    return {"is_approval_required": required}
