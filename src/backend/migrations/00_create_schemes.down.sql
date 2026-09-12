@@ -1,0 +1,2 @@
+DROP SCHEMA IF EXISTS auth_service CASCADE;
+DROP SCHEMA IF EXISTS package_service CASCADE;

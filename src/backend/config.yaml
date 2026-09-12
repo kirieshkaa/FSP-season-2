@@ -1,0 +1,69 @@
+server:
+  host: "${BACKEND_HOST}"
+  port: "${BACKEND_PORT}"
+  read_timeout_seconds: 30
+  write_timeout_seconds: 30
+  max_header_bytes: 4096
+
+database:
+  host: "${POSTGRES_HOST}"
+  port: "${POSTGRES_PORT}"
+  user: "${POSTGRES_USER}"
+  password: "${POSTGRES_PASSWORD}"
+  db: "${POSTGRES_DB}"
+  ssl_mode: "${POSTGRES_SSL_MODE}"
+  max_overflow: 10
+  pool_size: 5
+  pool_recycle: 3600
+
+redis:
+  host: "${REDIS_HOST}"
+  port: "${REDIS_PORT}"
+  password: "${REDIS_PASSWORD}"
+  db: "${REDIS_DB}"
+
+tokens:
+  access_token:
+    secret: "${ACCESS_TOKEN_SECRET}"
+    expiry_minutes: 15
+  refresh_token:
+    secret: "${REFRESH_TOKEN_SECRET}"
+    expiry_days: 7
+
+password_reset:
+  token_expiry_hours: 1
+
+email:
+  host: "smtp.mail.ru"
+  port: 587
+  username: "${EMAIL_USERNAME}"
+  password: "${EMAIL_PASSWORD}"
+
+security:
+  cookie_domain: "${COOKIE_DOMAIN}"
+  cookie_secure: false
+  cookie_same_site: "lax"
+  reset_link_base_url: "http://localhost:5173/reset-password"
+  company_name: "AuthService"
+  support_link: "http://localhost:5173/support"
+  cors_origins:
+    - "http://localhost:5173"
+    - "http://localhost:3000"
+    - "http://localhost:3001"
+    - "http://127.0.0.1:5173"
+    - "http://127.0.0.1:3000"
+    - "http://127.0.0.1:3001"
+    - "http://127.0.0.1:8080"
+    - "http://nginx"
+
+logging:
+  level: "INFO"
+  format: "json"
+
+admin:
+  username: "${ADMIN_USERNAME}"
+  email: "${ADMIN_EMAIL}"
+  password: "${ADMIN_PASSWORD}"
+
+account:
+  auto_approve: false
