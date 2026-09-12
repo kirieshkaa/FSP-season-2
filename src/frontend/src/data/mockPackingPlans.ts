@@ -1,0 +1,202 @@
+import type { BackendBox, BackendPackingResult, BackendProduct } from "../types";
+
+export const boxCatalog: Record<string, BackendBox> = {
+  small_0: {
+    box_type: "small_0",
+    x: 400,
+    y: 300,
+    z: 220,
+    maxMass: 12,
+  },
+  medium_1: {
+    box_type: "medium_1",
+    x: 520,
+    y: 360,
+    z: 320,
+    maxMass: 18,
+  },
+};
+
+export const itemCatalog: Record<string, BackendProduct> = {
+  m1anual: {
+    id: "m1anual",
+    destination: "Москва, пункт выдачи M-17",
+    x: 180,
+    y: 150,
+    z: 120,
+    mass: 2.4,
+    stackable: true,
+  },
+  cups_218: {
+    id: "cups_218",
+    destination: "Москва, пункт выдачи M-17",
+    x: 150,
+    y: 150,
+    z: 110,
+    mass: 1.6,
+    stackable: false,
+  },
+  tshirt_077: {
+    id: "tshirt_077",
+    destination: "Москва, пункт выдачи M-17",
+    x: 220,
+    y: 120,
+    z: 45,
+    mass: 0.5,
+    stackable: true,
+  },
+  cable_511: {
+    id: "cable_511",
+    destination: "Москва, пункт выдачи M-17",
+    x: 160,
+    y: 90,
+    z: 50,
+    mass: 0.3,
+    stackable: true,
+  },
+  cosmetic_300: {
+    id: "cosmetic_300",
+    destination: "Москва, пункт выдачи M-17",
+    x: 210,
+    y: 130,
+    z: 70,
+    mass: 0.7,
+    stackable: true,
+  },
+  filler_019: {
+    id: "filler_019",
+    destination: "Москва, пункт выдачи M-17",
+    x: 190,
+    y: 130,
+    z: 60,
+    mass: 0.1,
+    stackable: true,
+  },
+  filter_810: {
+    id: "filter_810",
+    destination: "Казань, сортировочный центр KZN-2",
+    x: 230,
+    y: 180,
+    z: 160,
+    mass: 3.8,
+    stackable: true,
+  },
+  blender_233: {
+    id: "blender_233",
+    destination: "Казань, сортировочный центр KZN-2",
+    x: 180,
+    y: 170,
+    z: 150,
+    mass: 2.9,
+    stackable: true,
+  },
+  glass_902: {
+    id: "glass_902",
+    destination: "Казань, сортировочный центр KZN-2",
+    x: 120,
+    y: 170,
+    z: 130,
+    mass: 1.1,
+    stackable: false,
+  },
+  blanket_118: {
+    id: "blanket_118",
+    destination: "Казань, сортировочный центр KZN-2",
+    x: 320,
+    y: 180,
+    z: 90,
+    mass: 1.2,
+    stackable: true,
+  },
+};
+
+export const packingResult: BackendPackingResult = {
+  result_code: 1,
+  containers: [
+    {
+      box_type: "small_0",
+      placements: [
+        {
+          item_id: "m1anual",
+          x: 0,
+          y: 0,
+          z: 0,
+          orientation: "Rotation.WLH",
+        },
+        {
+          item_id: "cups_218",
+          x: 180,
+          y: 0,
+          z: 0,
+          orientation: "Rotation.WLH",
+        },
+        {
+          item_id: "tshirt_077",
+          x: 0,
+          y: 150,
+          z: 0,
+          orientation: "Rotation.LWH",
+        },
+        {
+          item_id: "cable_511",
+          x: 220,
+          y: 150,
+          z: 0,
+          orientation: "Rotation.WLH",
+        },
+        {
+          item_id: "cosmetic_300",
+          x: 0,
+          y: 0,
+          z: 120,
+          orientation: "Rotation.WLH",
+        },
+      ],
+    },
+    {
+      box_type: "small_0",
+      placements: [
+        {
+          item_id: "filler_019",
+          x: 0,
+          y: 0,
+          z: 0,
+          orientation: "Rotation.WLH",
+        },
+        {
+          item_id: "glass_902",
+          x: 190,
+          y: 0,
+          z: 0,
+          orientation: "Rotation.HWL",
+        },
+      ],
+    },
+    {
+      box_type: "medium_1",
+      placements: [
+        {
+          item_id: "filter_810",
+          x: 0,
+          y: 0,
+          z: 0,
+          orientation: "Rotation.WLH",
+        },
+        {
+          item_id: "blender_233",
+          x: 230,
+          y: 0,
+          z: 0,
+          orientation: "Rotation.WLH",
+        },
+        {
+          item_id: "blanket_118",
+          x: 0,
+          y: 180,
+          z: 0,
+          orientation: "Rotation.LWH",
+        },
+      ],
+    },
+  ],
+};
