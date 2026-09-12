@@ -1,0 +1,143 @@
+/*
+  Marketplace-inspired color themes.
+  Apply a theme class or data attribute to body, #root, or any app container:
+  <body class="theme-ozon">
+  <div id="root" data-theme="wildberries">
+*/
+
+:root,
+.theme-ozon,
+[data-theme="ozon"] {
+  --color-primary: #005bff;
+  --color-primary-hover: #0048cc;
+  --color-primary-muted: #e8f0ff;
+  --color-secondary: #f91155;
+  --color-secondary-hover: #d80d47;
+  --color-accent: #00aaff;
+  --color-background: #f4f7fb;
+  --color-surface: #ffffff;
+  --color-surface-muted: #eef4ff;
+  --color-border: #d8e2f2;
+  --color-text: #111827;
+  --color-text-muted: #64748b;
+  --color-text-inverse: #ffffff;
+  --color-success: #16a34a;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-focus-ring: rgba(0, 91, 255, 0.35);
+  --gradient-brand: linear-gradient(135deg, #005bff 0%, #00aaff 58%, #f91155 100%);
+  --shadow-brand: 0 12px 32px rgba(0, 91, 255, 0.18);
+}
+
+.theme-wildberries,
+[data-theme="wildberries"] {
+  --color-primary: #cb11ab;
+  --color-primary-hover: #a80d8d;
+  --color-primary-muted: #fde7f8;
+  --color-secondary: #7f1dff;
+  --color-secondary-hover: #6411cf;
+  --color-accent: #ff4ecb;
+  --color-background: #fbf5fb;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f7e8f6;
+  --color-border: #ead1e8;
+  --color-text: #201324;
+  --color-text-muted: #7a607d;
+  --color-text-inverse: #070707;
+  --color-success: #22a06b;
+  --color-warning: #f59e0b;
+  --color-danger: #e11d48;
+  --color-focus-ring: rgba(203, 17, 171, 0.34);
+  --gradient-brand: linear-gradient(135deg, #481173 0%, #cb11ab 56%, #ff4ecb 100%);
+  --shadow-brand: 0 12px 32px rgba(203, 17, 171, 0.2);
+}
+
+.theme-yandex-market,
+.theme-yandex,
+[data-theme="yandex-market"],
+[data-theme="yandex"] {
+  --color-primary: #ffcc00;
+  --color-primary-hover: #e6b800;
+  --color-primary-muted: #fff6bf;
+  --color-secondary: #21201f;
+  --color-secondary-hover: #000000;
+  --color-accent: #fc3f1d;
+  --color-background: #f7f6f2;
+  --color-surface: #ffffff;
+  --color-surface-muted: #fff8d6;
+  --color-border: #e7e1c8;
+  --color-text: #21201f;
+  --color-text-muted: #68645c;
+  --color-text-inverse: #ffffff;
+  --color-success: #20a052;
+  --color-warning: #f59e0b;
+  --color-danger: #fc3f1d;
+  --color-focus-ring: rgba(255, 204, 0, 0.5);
+  --gradient-brand: linear-gradient(135deg, #ffcc00 0%, #ffd84d 62%, #fc3f1d 100%);
+  --shadow-brand: 0 12px 32px rgba(255, 204, 0, 0.22);
+}
+
+.theme-sber-market,
+.theme-sbermarket,
+.theme-sber,
+[data-theme="sber-market"],
+[data-theme="sbermarket"],
+[data-theme="sber"] {
+  --color-primary: #21a038;
+  --color-primary-hover: #18842c;
+  --color-primary-muted: #e7f7ea;
+  --color-secondary: #00b956;
+  --color-secondary-hover: #009f49;
+  --color-accent: #00d1ff;
+  --color-background: #f3f9f1;
+  --color-surface: #ffffff;
+  --color-surface-muted: #e9f8ed;
+  --color-border: #cfe7d5;
+  --color-text: #102116;
+  --color-text-muted: #5f7566;
+  --color-text-inverse: #ffffff;
+  --color-success: #21a038;
+  --color-warning: #f59e0b;
+  --color-danger: #dc2626;
+  --color-focus-ring: rgba(33, 160, 56, 0.34);
+  --gradient-brand: linear-gradient(135deg, #21a038 0%, #00b956 55%, #00d1ff 100%);
+  --shadow-brand: 0 12px 32px rgba(33, 160, 56, 0.18);
+}
+
+.app-theme {
+  background: var(--color-background);
+  color: var(--color-text);
+}
+
+.app-theme .surface {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-brand);
+}
+
+.app-theme .button-primary {
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+}
+
+.app-theme .button-primary:hover {
+  background: var(--color-primary-hover);
+}
+
+.app-theme .button-secondary {
+  background: var(--color-secondary);
+  color: var(--color-text-inverse);
+}
+
+.app-theme .button-secondary:hover {
+  background: var(--color-secondary-hover);
+}
+
+.app-theme .muted {
+  color: var(--color-text-muted);
+}
+
+.app-theme :focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
