@@ -558,6 +558,15 @@ wheels = [
 ]
 
 [[package]]
+name = "packvium"
+version = "1.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ba/a2/06b85a6ee2d1e25064eb36890135b8ac5d91cc4e5063ad2699d8b56f60ec/packvium-1.1.0.tar.gz", hash = "sha256:777f1ab58e1660338afb18ea4cb3f21c6fc4c16e7fb43950793eaab69bc0bb11", size = 322495, upload-time = "2026-09-08T23:12:33.452Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/26/52/70ecff01cc5db806144e24d800c7cac8ec1a6eaa93550cc65f3ff71c880e/packvium-1.1.0-py3-none-any.whl", hash = "sha256:070658cba9ec176bd3dbb53615cd580ef8c0f3f03e52fd753d78d26c9f5a672e", size = 176458, upload-time = "2026-09-08T23:12:32.178Z" },
+]
+
+[[package]]
 name = "pluggy"
 version = "1.6.0"
 source = { registry = "https://pypi.org/simple" }
@@ -765,6 +774,7 @@ dependencies = [
     { name = "bcrypt" },
     { name = "fastapi" },
     { name = "jinja2" },
+    { name = "packvium" },
     { name = "pydantic", extra = ["email"] },
     { name = "pydantic-settings" },
     { name = "python-jose", extra = ["cryptography"] },
@@ -789,6 +799,7 @@ requires-dist = [
     { name = "bcrypt", specifier = ">=4.1.0" },
     { name = "fastapi", specifier = ">=0.109.0" },
     { name = "jinja2", specifier = ">=3.1.0" },
+    { name = "packvium", specifier = ">=1.1.0" },
     { name = "pydantic", extras = ["email"], specifier = ">=2.5.0" },
     { name = "pydantic-settings", specifier = ">=2.1.0" },
     { name = "python-jose", extras = ["cryptography"], specifier = ">=3.3.0" },
