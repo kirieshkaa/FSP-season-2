@@ -32,6 +32,7 @@ class PackageService:
         depth: float,
         max_weight: float,
         available_count: int = 0,
+        wear_rate: float = 1.0,
     ) -> Package:
         now = datetime.now(timezone.utc)
         package = Package(
@@ -41,6 +42,7 @@ class PackageService:
             depth=depth,
             max_weight=max_weight,
             available_count=available_count,
+            wear_rate=wear_rate,
             created_at=now,
             updated_at=now,
         )

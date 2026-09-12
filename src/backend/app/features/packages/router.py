@@ -31,6 +31,7 @@ async def create_package(
         depth=body.depth,
         max_weight=body.max_weight,
         available_count=body.available_count,
+        wear_rate=body.wear_rate,
     )
 
 

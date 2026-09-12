@@ -22,6 +22,7 @@ from app.features.health.router import router as health_router
 from app.features.packages.router import router as packages_router
 from app.features.password_reset.repository import PasswordResetRepository
 from app.features.password_reset.router import router as password_reset_router
+from app.features.products.router import router as products_router
 
 
 @asynccontextmanager
@@ -79,6 +80,10 @@ app = FastAPI(
             "description": "Package service - packaging catalog and stock.",
         },
         {
+            "name": "products",
+            "description": "Product service - product catalog.",
+        },
+        {
             "name": "health",
             "description": "Service healthcheck.",
         },
@@ -128,6 +133,7 @@ app.include_router(health_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(password_reset_router, prefix="/api/v1")
 app.include_router(packages_router, prefix="/api/v1")
+app.include_router(products_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
 
 

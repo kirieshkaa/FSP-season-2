@@ -20,6 +20,7 @@ class PackageModel(Base):
     depth: Mapped[float] = mapped_column(Float, nullable=False)
     max_weight: Mapped[float] = mapped_column(Float, nullable=False)
     available_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    wear_rate: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()

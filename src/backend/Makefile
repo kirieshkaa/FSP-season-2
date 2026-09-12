@@ -4,11 +4,18 @@ COMPOSE=docker compose
 BUILD_TARGETS=backend
 MIGRATIONS_DIR=./migrations
 
+
+BACKEND_HOST=127.0.0.1
+BACKEND_PORT=8000
+
 MIGRATE=$(COMPOSE) -f $(DEV_COMPOSE) run --rm --no-deps --entrypoint sh migrate \
 	-c 'exec migrate -path=/migrations -database "$$POSTGRES_URL" "$$@"' --
 
 create-env:
 	@. ./scripts/create-env.sh
+
+run:
+	uv run uvicorn app.main:app --host $(BACKEND_HOST) --port $(BACKEND_PORT)
 
 docker-build:
 	$(COMPOSE) -f $(PROD_COMPOSE) build $(BUILD_TARGETS)

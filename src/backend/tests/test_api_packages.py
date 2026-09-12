@@ -60,6 +60,21 @@ class TestPackageAccess:
         token = await _token_for(client, container, "adm", UserRole.ADMIN)
         assert (await _create_package(client, token)).status_code == 201
 
+    async def test_wear_rate_defaults_and_roundtrips(self, client, container):
+        token = await _token_for(client, container, "adm", UserRole.ADMIN)
+
+        default = (await _create_package(client, token)).json()
+        assert default["wear_rate"] == 1.0
+
+        worn = (await _create_package(client, token, wear_rate=0.4)).json()
+        assert worn["wear_rate"] == 0.4
+
+    async def test_wear_rate_out_of_range_is_400(self, client, container):
+        token = await _token_for(client, container, "adm", UserRole.ADMIN)
+
+        assert (await _create_package(client, token, wear_rate=1.5)).status_code == 400
+        assert (await _create_package(client, token, wear_rate=-0.1)).status_code == 400
+
 
 class TestPackageCrud:
     async def test_get_by_id(self, client, container):

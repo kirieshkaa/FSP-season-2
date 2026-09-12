@@ -20,6 +20,7 @@ class PackageRepository(IPackageRepository):
             depth=model.depth,
             max_weight=model.max_weight,
             available_count=model.available_count,
+            wear_rate=model.wear_rate,
             created_at=model.created_at,
             updated_at=model.updated_at,
         )
@@ -32,6 +33,7 @@ class PackageRepository(IPackageRepository):
             depth=package.depth,
             max_weight=package.max_weight,
             available_count=package.available_count,
+            wear_rate=package.wear_rate,
         )
         self._session.add(model)
         await self._session.commit()

@@ -26,6 +26,8 @@ from app.features.password_reset.entities import PasswordResetToken
 from app.features.password_reset.interfaces import IPasswordResetRepository
 from app.features.packages.entities import Package, PaginatedPackages
 from app.features.packages.interfaces import IPackageRepository
+from app.features.products.entities import PaginatedProducts, Product
+from app.features.products.interfaces import IProductRepository
 
 
 def _now_naive() -> datetime:
@@ -343,3 +345,41 @@ class FakePackageRepository(IPackageRepository):
         package.available_count += delta
         self.packages[package.id] = package
         return deepcopy(package)
+
+
+class FakeProductRepository(IProductRepository):
+    def __init__(self):
+        self.products: dict[str, Product] = {}
+
+    async def create(self, product: Product) -> Product:
+        self.products[product.id] = deepcopy(product)
+        return deepcopy(product)
+
+    async def get_by_id(self, product_id: str) -> Optional[Product]:
+        product = self.products.get(product_id)
+        return deepcopy(product) if product else None
+
+    async def get_all(self, page: int, limit: int) -> PaginatedProducts:
+        items = sorted(
+            self.products.values(), key=lambda p: p.created_at, reverse=True
+        )
+        total = len(items)
+        offset = (page - 1) * limit
+        return PaginatedProducts(
+            items=[deepcopy(p) for p in items[offset : offset + limit]],
+            total=total,
+            page=page,
+            limit=limit,
+        )
+
+    async def update(self, product_id: str, fields: dict) -> Optional[Product]:
+        product = await self.get_by_id(product_id)
+        if not product:
+            return None
+        for key, value in fields.items():
+            setattr(product, key, value)
+        self.products[product.id] = product
+        return deepcopy(product)
+
+    async def delete(self, product_id: str) -> None:
+        self.products.pop(product_id, None)

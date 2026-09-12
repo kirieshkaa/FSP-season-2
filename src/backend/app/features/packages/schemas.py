@@ -11,6 +11,7 @@ class PackageCreateRequest(BaseModel):
     depth: float = Field(..., gt=0)
     max_weight: float = Field(..., gt=0)
     available_count: int = Field(0, ge=0)
+    wear_rate: float = Field(1.0, ge=0, le=1)
 
 
 class PackageUpdateRequest(BaseModel):
@@ -19,6 +20,7 @@ class PackageUpdateRequest(BaseModel):
     depth: Optional[float] = Field(None, gt=0)
     max_weight: Optional[float] = Field(None, gt=0)
     available_count: Optional[int] = Field(None, ge=0)
+    wear_rate: Optional[float] = Field(None, ge=0, le=1)
 
 
 class PackageResponse(BaseModel):
@@ -28,6 +30,7 @@ class PackageResponse(BaseModel):
     depth: float
     max_weight: float
     available_count: int
+    wear_rate: float
     created_at: datetime
     updated_at: datetime
 

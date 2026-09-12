@@ -41,11 +41,13 @@ from app.features.password_reset.deps import (
     get_password_reset_repo,
 )
 from app.features.packages.deps import get_package_repo
+from app.features.products.deps import get_product_repo
 from tests.fakes import (
     FakeAccessTokenRepository,
     FakeEmailSender,
     FakePackageRepository,
     FakePasswordResetRepository,
+    FakeProductRepository,
     FakeRedis,
     FakeRefreshTokenRepository,
     FakeSession,
@@ -75,6 +77,7 @@ class FakeContainer:
         self.password_resets = FakePasswordResetRepository()
         self.email = FakeEmailSender()
         self.packages = FakePackageRepository()
+        self.products = FakeProductRepository()
 
 
 @pytest.fixture(autouse=True)
@@ -111,6 +114,7 @@ def client(container):
     )
     app.dependency_overrides[get_email_sender] = lambda: container.email
     app.dependency_overrides[get_package_repo] = lambda: container.packages
+    app.dependency_overrides[get_product_repo] = lambda: container.products
 
     # get_db is used by health + repo factory fallbacks.
     from app.core.database import get_db
