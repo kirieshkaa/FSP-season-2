@@ -440,7 +440,7 @@ function PackingPage() {
   };
 
   return (
-    <main className="app-shell app-theme theme-ozon">
+    <main className="packing-shell app-theme">
       <header className="topbar">
         <div className="brand-block">
           <div>

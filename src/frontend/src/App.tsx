@@ -9,13 +9,26 @@ import Dashboard from './Dashboard.jsx'
 import AdminPanel from './AdminPanel.jsx'
 import PackingPage from './PackingPage'
 
-type View = 'login' | 'app' | 'admin' | 'packing'
+type Route = 'auth' | 'dashboard' | 'packing'
+type DashboardView = 'worker' | 'admin'
 
 const ADMIN_EMAIL = 'admin@ozon.ru'
+const ROUTES: Record<Route, string> = {
+  auth: '/auth',
+  dashboard: '/dashboard',
+  packing: '/packing'
+}
+
+function getRouteFromPath(pathname: string): Route {
+  if (pathname === ROUTES.dashboard) return 'dashboard'
+  if (pathname === ROUTES.packing) return 'packing'
+  return 'auth'
+}
 
 export default function App() {
   const [theme, setTheme] = useState<ThemeKey>(getInitialTheme)
-  const [view, setView] = useState<View>('login')
+  const [route, setRoute] = useState<Route>(() => getRouteFromPath(window.location.pathname))
+  const [dashboardView, setDashboardView] = useState<DashboardView>('worker')
   const [activeNav, setActiveNav] = useState<NavId>('boxes')
   const appliedRef = useRef<ThemeKey>(getInitialTheme())
   const busyRef = useRef(false)
@@ -24,6 +37,21 @@ export default function App() {
   const bgBRef = useRef<HTMLDivElement | null>(null)
   const activeRef = useRef<HTMLDivElement | null>(null)
   const idleRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const normalizedRoute = getRouteFromPath(window.location.pathname)
+    const normalizedPath = ROUTES[normalizedRoute]
+    if (window.location.pathname !== normalizedPath) {
+      window.history.replaceState(null, '', normalizedPath)
+    }
+
+    function handlePopState(): void {
+      setRoute(getRouteFromPath(window.location.pathname))
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
 
   useEffect(() => {
     const t = THEMES[theme]
@@ -56,7 +84,7 @@ export default function App() {
     if (!THEMES[name]) return
     if (name === appliedRef.current || busyRef.current) return
 
-    const withCard = view === 'login'
+    const withCard = route === 'auth'
     if (!anime) {
       appliedRef.current = name
       setTheme(name)
@@ -117,21 +145,37 @@ export default function App() {
     })
   }
 
+  function navigate(nextRoute: Route): void {
+    const nextPath = ROUTES[nextRoute]
+    if (window.location.pathname !== nextPath) {
+      window.history.pushState(null, '', nextPath)
+    }
+    setRoute(nextRoute)
+  }
+
   function handleLogin(email: string): void {
-    setView(email.trim().toLowerCase() === ADMIN_EMAIL ? 'admin' : 'app')
+    setDashboardView(email.trim().toLowerCase() === ADMIN_EMAIL ? 'admin' : 'worker')
+    navigate('dashboard')
   }
 
   function handleNav(id: NavId): void {
     if (id === 'admin') {
-      setView('admin')
+      setDashboardView('admin')
+      navigate('dashboard')
       return
     }
-    setView('app')
+    setDashboardView('worker')
     setActiveNav(id)
+    navigate('dashboard')
   }
 
   function handleStartPacking(): void {
-    setView('packing')
+    navigate('packing')
+  }
+
+  function handleLogout(): void {
+    setDashboardView('worker')
+    navigate('auth')
   }
 
   return (
@@ -139,21 +183,21 @@ export default function App() {
       <div className="bg-layer" ref={bgARef} />
       <div className="bg-layer" ref={bgBRef} />
 
-      {view === 'login' ? (
+      {route === 'auth' ? (
         <main className="auth">
           <div className="auth-card" ref={cardRef}>
             <LoginCard onSuccess={handleLogin} />
           </div>
         </main>
-      ) : view === 'admin' ? (
-        <AdminPanel onNav={handleNav} onLogout={() => setView('login')} />
-      ) : view === 'packing' ? (
+      ) : route === 'packing' ? (
         <PackingPage />
+      ) : dashboardView === 'admin' ? (
+        <AdminPanel onNav={handleNav} onLogout={handleLogout} />
       ) : (
         <DashboardShell
           activeNav={activeNav}
           onNav={handleNav}
-          onLogout={() => setView('login')}
+          onLogout={handleLogout}
           onStartPacking={handleStartPacking}
           render={(api) => <Dashboard api={api} />}
         />
