@@ -11,3 +11,4 @@ aiosmtplib>=3.0.0
 PyYAML>=6.0.0
 structlog>=24.0.0
 jinja2>=3.1.0
+packvium>=1.1.0

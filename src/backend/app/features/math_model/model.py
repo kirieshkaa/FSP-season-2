@@ -11,10 +11,11 @@ from packvium.serialization import UnsupportedFeatureError
 
 
 class Box(BaseModel):
-    x: float = Field(..., gt=0)
-    y: float = Field(..., gt=0)
-    z: float = Field(..., gt=0)
-    cargo: float = Field(default=0, ge=0)
+    width: float = Field(..., gt=0)
+    height: float = Field(..., gt=0)
+    depth: float = Field(..., gt=0)
+    max_weight: float = Field(default=0, ge=0)
+    count: int = Field(default=1, ge=1)
     condition: int = Field(default=100, ge=0, le=100)
 
 
@@ -37,7 +38,6 @@ class Item(BaseModel):
 class SolveRequest(BaseModel):
     items: List[Item]
     boxes: Dict[str, Box]
-    counts: Dict[str, int] = {}
 
 
 class ResultCode(IntEnum):
@@ -103,18 +103,18 @@ class PacketSolver:
 
         packvium_containers = []
         for box_type, box in request.boxes.items():
-            count = request.counts.get(box_type, 1)
+            count = box.count
             for i in range(count):
                 pv_container = {
                     "id": f"{box_type}_{i}",
                     "inner_dimensions": {
-                        "length": f"{box.x:.3f}",
-                        "width": f"{box.y:.3f}",
-                        "height": f"{box.z:.3f}",
+                    "length": f"{box.depth:.3f}",
+                    "width": f"{box.width:.3f}",
+                    "height": f"{box.height:.3f}",
                     },
                 }
-                if box.cargo > 0:
-                    pv_container["max_payload"] = f"{box.cargo:.3f} kg"
+                if box.max_weight > 0:
+                    pv_container["max_payload"] = f"{box.max_weight:.3f} kg"
                 packvium_containers.append(pv_container)
 
         try:

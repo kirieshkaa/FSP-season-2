@@ -20,6 +20,7 @@ from app.features.auth.repository import UserRepository
 from app.features.auth.router import router as auth_router
 from app.features.health.router import router as health_router
 from app.features.boxes.router import router as boxes_router
+from app.features.math_model.router import router as math_model_router
 from app.features.password_reset.repository import PasswordResetRepository
 from app.features.password_reset.router import router as password_reset_router
 from app.features.products.router import router as products_router
@@ -84,6 +85,10 @@ app = FastAPI(
             "description": "Product service - product catalog.",
         },
         {
+            "name": "math-model",
+            "description": "Math model - packing solver based on packvium.",
+        },
+        {
             "name": "health",
             "description": "Service healthcheck.",
         },
@@ -134,6 +139,7 @@ app.include_router(auth_router, prefix="/api/v1")
 app.include_router(password_reset_router, prefix="/api/v1")
 app.include_router(boxes_router, prefix="/api/v1")
 app.include_router(products_router, prefix="/api/v1")
+app.include_router(math_model_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
 
 
