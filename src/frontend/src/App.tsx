@@ -153,10 +153,12 @@ function getIsoPaintDepth(item: PackingItem) {
 function IsoCuboid({
   item,
   active,
+  falling,
   onSelect,
 }: {
   item: PackingItem;
   active: boolean;
+  falling?: boolean;
   onSelect: () => void;
 }) {
   const c = getCorners(item.position, item.dimensions);
@@ -165,7 +167,9 @@ function IsoCuboid({
     y: item.position.y + item.dimensions.depth / 2,
     z: item.position.z + item.dimensions.height + 18,
   });
-  const classes = ["iso-item", active ? "is-active" : ""].filter(Boolean).join(" ");
+  const classes = ["iso-item", active ? "is-active" : "", falling ? "is-falling" : ""]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <g className={classes} onClick={onSelect} role="button" tabIndex={0}>
@@ -195,14 +199,18 @@ function IsoCuboid({
 function IsoBoxView({
   container,
   activeItemId,
+  placementStep,
   onSelectItem,
 }: {
   container: PackedContainer;
   activeItemId: string;
+  placementStep: number;
   onSelectItem: (itemId: string) => void;
 }) {
   const box = getCorners({ x: 0, y: 0, z: 0 }, container.box.dimensions);
   const viewBox = getSvgViewBox(container.box.dimensions);
+  const itemOrder = new Map(container.items.map((item, index) => [item.id, index]));
+  const fallingItem = placementStep < container.items.length ? container.items[placementStep] : null;
   const sortedItems = [...container.items].sort((a, b) => {
     const depthDelta = getIsoPaintDepth(a) - getIsoPaintDepth(b);
     if (depthDelta !== 0) {
@@ -210,6 +218,10 @@ function IsoBoxView({
     }
 
     return a.position.z - b.position.z;
+  });
+  const visibleItems = sortedItems.filter((item) => {
+    const itemIndex = itemOrder.get(item.id) ?? 0;
+    return itemIndex < placementStep || placementStep >= container.items.length;
   });
 
   return (
@@ -227,7 +239,7 @@ function IsoBoxView({
         points={pointsToString([box.p000, box.p010, box.p011, box.p001])}
       />
 
-      {sortedItems.map((item) => (
+      {visibleItems.map((item) => (
         <IsoCuboid
           key={item.id}
           item={item}
@@ -235,6 +247,16 @@ function IsoBoxView({
           onSelect={() => onSelectItem(item.id)}
         />
       ))}
+
+      {fallingItem && (
+        <IsoCuboid
+          key={`falling-${fallingItem.id}-${placementStep}`}
+          item={fallingItem}
+          active
+          falling
+          onSelect={() => onSelectItem(fallingItem.id)}
+        />
+      )}
 
       <g className="box-wireframe">
         {[
@@ -355,21 +377,26 @@ function BoxMenu({
       </div>
 
       <div className="box-list">
-        {containers.map((container) => (
-          <button
-            type="button"
-            key={container.id}
-            className={`box-row ${container.id === selectedContainerId ? "is-active" : ""}`}
-            onClick={() => onSelectContainer(container.id)}
-          >
-            <span className="box-index">{container.index}</span>
-            <span className="box-copy">
-              <strong>{container.boxType}</strong>
-              <span>{container.items.length} товаров · {Math.round(container.fillRate * 100)}%</span>
-              <span>{formatDimensions(container.box.dimensions)}</span>
-            </span>
-          </button>
-        ))}
+        {containers.map((container) => {
+          const boxWeight = getWeight(container.items);
+
+          return (
+            <button
+              type="button"
+              key={container.id}
+              className={`box-row ${container.id === selectedContainerId ? "is-active" : ""}`}
+              onClick={() => onSelectContainer(container.id)}
+            >
+              <span className="box-index">{container.index}</span>
+              <span className="box-copy">
+                <strong>{container.boxType}</strong>
+                <span>{container.items.length} товаров · {Math.round(container.fillRate * 100)}%</span>
+                <span>{boxWeight.toFixed(1)} / {container.box.maxMass} кг</span>
+                <span>{formatDimensions(container.box.dimensions)}</span>
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -383,15 +410,27 @@ function App() {
     [containers, selectedContainerId],
   );
   const [activeItemId, setActiveItemId] = useState(selectedContainer?.items[0]?.id ?? "");
+  const [placementStep, setPlacementStep] = useState(selectedContainer?.items.length ?? 0);
 
   const activeItem = selectedContainer.items.find((item) => item.id === activeItemId) ?? selectedContainer.items[0];
   const totalWeight = getWeight(selectedContainer.items);
 
   useEffect(() => {
     setActiveItemId(selectedContainer.items[0]?.id ?? "");
+    setPlacementStep(selectedContainer.items.length);
   }, [selectedContainer.id, selectedContainer.items]);
 
+  useEffect(() => {
+    if (placementStep < selectedContainer.items.length) {
+      setActiveItemId(selectedContainer.items[placementStep].id);
+    }
+  }, [placementStep, selectedContainer.items]);
+
   const selectItem = (itemId: string) => {
+    const selectedIndex = selectedContainer.items.findIndex((item) => item.id === itemId);
+    if (selectedIndex >= 0) {
+      setPlacementStep(selectedIndex);
+    }
     setActiveItemId(itemId);
   };
 
@@ -404,7 +443,7 @@ function App() {
       <header className="topbar">
         <div className="brand-block">
           <div>
-            <h1>Результат упаковки</h1>
+            <h1>Алгоритм упаковки</h1>
           </div>
         </div>
       </header>
@@ -436,6 +475,7 @@ function App() {
             <IsoBoxView
               container={selectedContainer}
               activeItemId={activeItem.id}
+              placementStep={placementStep}
               onSelectItem={selectItem}
             />
           </div>
