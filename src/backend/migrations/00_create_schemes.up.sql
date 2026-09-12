@@ -1,0 +1,2 @@
+CREATE SCHEMA IF NOT EXISTS auth_service;
+CREATE SCHEMA IF NOT EXISTS package_service;
