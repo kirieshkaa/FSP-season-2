@@ -77,33 +77,6 @@
   --shadow-brand: 0 12px 32px rgba(255, 204, 0, 0.22);
 }
 
-.theme-sber-market,
-.theme-sbermarket,
-.theme-sber,
-[data-theme="sber-market"],
-[data-theme="sbermarket"],
-[data-theme="sber"] {
-  --color-primary: #21a038;
-  --color-primary-hover: #18842c;
-  --color-primary-muted: #e7f7ea;
-  --color-secondary: #00b956;
-  --color-secondary-hover: #009f49;
-  --color-accent: #00d1ff;
-  --color-background: #f3f9f1;
-  --color-surface: #ffffff;
-  --color-surface-muted: #e9f8ed;
-  --color-border: #cfe7d5;
-  --color-text: #102116;
-  --color-text-muted: #5f7566;
-  --color-text-inverse: #ffffff;
-  --color-success: #21a038;
-  --color-warning: #f59e0b;
-  --color-danger: #dc2626;
-  --color-focus-ring: rgba(33, 160, 56, 0.34);
-  --gradient-brand: linear-gradient(135deg, #21a038 0%, #00b956 55%, #00d1ff 100%);
-  --shadow-brand: 0 12px 32px rgba(33, 160, 56, 0.18);
-}
-
 .app-theme {
   background: var(--color-background);
   color: var(--color-text);
