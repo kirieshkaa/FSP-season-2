@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import get_config
 from app.core.database import get_db
+from app.core.exceptions import AppException
 from app.core.redis import close_redis, init_redis
 from app.core.rate_limiter import RateLimitMiddleware
 from app.core.security import hash_password
@@ -106,6 +107,14 @@ async def validation_exception_handler(request, exc):
     return JSONResponse(
         status_code=400,
         content={"ok": False, "message": f"{field}: {msg}"},
+    )
+
+
+@app.exception_handler(AppException)
+async def app_exception_handler(request, exc: AppException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"ok": False, "message": exc.message},
     )
 
 

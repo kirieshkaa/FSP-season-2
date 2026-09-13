@@ -1,26 +1,52 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactElement } from 'react'
-import type { IconComp } from './icons.jsx'
-import { BOXES, DESTINATIONS, PRODUCTS, STATUS, deriveStatus } from './data.js'
-import type { Box, Product } from './data.js'
+import type { IconComp } from '../components/ui/icons.jsx'
+import { DESTINATIONS, STATUS, deriveStatus } from '../data/mock.js'
+import type { Box, Product } from '../data/mock.js'
 import {
-  IconEdit, IconTrash, IconSearch, IconFilter, IconPlus, IconCheck, IconX,
+  IconEdit, IconTrash, IconSearch, IconFilter, IconPlus, IconCheck, IconX, IconEye,
   IconArrowUp, IconArrowDown, IconArrowUpDown
-} from './icons.jsx'
-import type { ShellApi } from './DashboardShell.jsx'
+} from '../components/ui/icons.jsx'
+import { boxesApi } from '../api/boxes'
+import { productsApi } from '../api/products'
+import { ApiError } from '../api/client'
+import {
+  toBoxPayload,
+  toProductPayload,
+  shortId,
+  toUiBox,
+  toUiProduct,
+} from '../data/adapters'
 
-interface Props {
-  api: ShellApi
+export interface SelectionApi {
+  selection: Product[]
+  toggle: (p: Product) => void
+  deselect: (sku: string) => void
+  selectAll: (products: Product[]) => void
+  clear: () => void
+  confirm: () => void
 }
 
-const PAGE_SIZE = 6
+interface Props {
+  api: SelectionApi
+}
 
-type SortKey = 'sku' | 'name' | 'volume' | 'weight' | 'destination'
+const PAGE_SIZE = 10
+
+type SortKey = 'sku' | 'name' | 'volume' | 'qty' | 'weight' | 'destination'
 type SortOrder = 'asc' | 'desc'
 
 function TableAction({ icon: I, title, danger, onClick }: { icon: IconComp; title: string; danger?: boolean; onClick?: () => void }): ReactElement {
   return (
-    <button className={`table-action${danger ? ' danger' : ''}`} title={title} onClick={onClick}>
+    <button
+      type="button"
+      className={`table-action${danger ? ' danger' : ''}`}
+      title={title}
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick?.()
+      }}
+    >
       <I />
     </button>
   )
@@ -86,7 +112,7 @@ function BoxesTable({ boxes, onEdit, onDelete }: BoxesProps): ReactElement {
             return (
               <tr key={box.id} className={box.status === 'critical' ? 'row-critical' : ''}>
                 <td className="cell-name">
-                  <span className={`box-tag box-${box.id.toLowerCase()}`}>{box.id}</span>
+                  <span className="box-tag" title={box.id}>{box.type || shortId(box.id)}</span>
                   <span className="box-name">{box.name}</span>
                 </td>
                 <td>{box.w} × {box.h} × {box.d}</td>
@@ -123,6 +149,7 @@ interface EditBoxProps {
 
 function EditBoxModal({ box, onSave, onClose }: EditBoxProps): ReactElement {
   const [name, setName] = useState(box.name)
+  const [type, setType] = useState(box.type)
   const [w, setW] = useState(String(box.w))
   const [h, setH] = useState(String(box.h))
   const [d, setD] = useState(String(box.d))
@@ -134,6 +161,7 @@ function EditBoxModal({ box, onSave, onClose }: EditBoxProps): ReactElement {
     onSave({
       ...box,
       name: name.trim() || box.name,
+      type: type.trim() || box.type,
       w: Math.max(1, Number(w) || 1),
       h: Math.max(1, Number(h) || 1),
       d: Math.max(1, Number(d) || 1),
@@ -145,11 +173,15 @@ function EditBoxModal({ box, onSave, onClose }: EditBoxProps): ReactElement {
   }
 
   return (
-    <FormModal title={`Коробка ${box.id}`} sub="Редактирование конфигурации тары" onSave={save} onClose={onClose}>
+    <FormModal title={`Коробка ${box.type || box.id}`} sub="Редактирование конфигурации тары" onSave={save} onClose={onClose}>
       <div className="form-grid">
         <label className="form-field form-full">
           <span>Название</span>
           <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
+        </label>
+        <label className="form-field form-full">
+          <span>Тип (S, M, L, XL…)</span>
+          <input type="text" maxLength={16} placeholder="M" value={type} onChange={(e) => setType(e.target.value)} />
         </label>
         <label className="form-field">
           <span>Длина, мм</span>
@@ -179,7 +211,7 @@ function EditBoxModal({ box, onSave, onClose }: EditBoxProps): ReactElement {
 const BOX_ID_PALETTE = ['S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL', '4XL']
 
 function AddBoxModal({ boxes, onSave, onClose }: { boxes: Box[]; onSave: (b: Box) => void; onClose: () => void }): ReactElement {
-  const [id, setId] = useState(() => BOX_ID_PALETTE.find((x) => !boxes.some((b) => b.id === x)) ?? `B${boxes.length + 1}`)
+  const [id, setId] = useState(() => BOX_ID_PALETTE.find((x) => !boxes.some((b) => b.type === x)) ?? `B${boxes.length + 1}`)
   const [name, setName] = useState('')
   const [w, setW] = useState('')
   const [h, setH] = useState('')
@@ -187,7 +219,7 @@ function AddBoxModal({ boxes, onSave, onClose }: { boxes: Box[]; onSave: (b: Box
   const [qty, setQty] = useState('0')
   const [maxWeight, setMaxWeight] = useState('')
 
-  const idOk = id.trim() !== '' && !boxes.some((b) => b.id === id)
+  const idOk = id.trim() !== '' && !boxes.some((b) => b.type === id.trim())
   const numsOk = [w, h, d, maxWeight].every((x) => x.trim() !== '' && Number(x) > 0) && Number(qty) >= 0
   const saveDisabled = !idOk || !numsOk
 
@@ -197,6 +229,7 @@ function AddBoxModal({ boxes, onSave, onClose }: { boxes: Box[]; onSave: (b: Box
     onSave({
       id,
       name: name.trim() || `Коробка ${id}`,
+      type: id.trim(),
       w: Number(w),
       h: Number(h),
       d: Number(d),
@@ -211,8 +244,8 @@ function AddBoxModal({ boxes, onSave, onClose }: { boxes: Box[]; onSave: (b: Box
     <FormModal title="Новая коробка" sub="Добавление конфигурации тары" onSave={save} onClose={onClose} saveDisabled={saveDisabled}>
       <div className="form-grid">
         <label className="form-field">
-          <span>Код</span>
-          <input type="text" value={id} onChange={(e) => setId(e.target.value)} className={!idOk ? 'invalid' : ''} />
+          <span>Тип (S, M, L, XL…)</span>
+          <input type="text" maxLength={16} value={id} onChange={(e) => setId(e.target.value)} className={!idOk ? 'invalid' : ''} />
         </label>
         <label className="form-field">
           <span>Название</span>
@@ -247,9 +280,13 @@ function AddBoxModal({ boxes, onSave, onClose }: { boxes: Box[]; onSave: (b: Box
 
 interface ProductsProps {
   products: Product[]
-  api: ShellApi
+  total: number
+  page: number
+  onPageChange: (p: number) => void
+  api: SelectionApi
   onEdit: (product: Product) => void
   onDelete: (sku: string) => void
+  onView: (product: Product) => void
 }
 
 function SortTh({ label, k, sortKey, sortOrder, onClick }: {
@@ -270,7 +307,7 @@ function SortTh({ label, k, sortKey, sortOrder, onClick }: {
   )
 }
 
-function ProductsTable({ products, api, onEdit, onDelete }: ProductsProps): ReactElement {
+function ProductsTable({ products, total, page, onPageChange, api, onEdit, onDelete, onView }: ProductsProps): ReactElement {
   const { selection, toggle, confirm } = api
   const [query, setQuery] = useState('')
   const [dest, setDest] = useState('all')
@@ -279,7 +316,7 @@ function ProductsTable({ products, api, onEdit, onDelete }: ProductsProps): Reac
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [sortKey, setSortKey] = useState<SortKey>('sku')
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc')
-  const [page, setPage] = useState(1)
+  const firstRender = useRef(true)
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -298,35 +335,28 @@ function ProductsTable({ products, api, onEdit, onDelete }: ProductsProps): Reac
         case 'sku': return a.sku.localeCompare(b.sku) * dir
         case 'name': return a.name.localeCompare(b.name, 'ru') * dir
         case 'volume': return (a.w * a.h * a.d - b.w * b.h * b.d) * dir
+        case 'qty': return (a.qty - b.qty) * dir
         case 'weight': return (a.weight - b.weight) * dir
         case 'destination': return a.destination.localeCompare(b.destination, 'ru') * dir
       }
     })
   }, [products, query, dest, minW, maxW, sortKey, sortOrder])
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const safePage = Math.min(page, totalPages)
-  const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+  const pageRows = filtered
 
   useEffect(() => {
-    setPage(1)
+    if (firstRender.current) {
+      firstRender.current = false
+      return
+    }
+    onPageChange(1)
   }, [query, dest, minW, maxW, sortKey, sortOrder])
 
   useEffect(() => {
-    if (page > totalPages) setPage(totalPages)
+    if (page > totalPages) onPageChange(totalPages)
   }, [page, totalPages])
-
-  const allSelected = products.length > 0 && selection.length === products.length
-
-  function setAll(on: boolean): void {
-    if (on) {
-      products.forEach((p) => {
-        if (!selection.some((x) => x.sku === p.sku)) toggle(p)
-      })
-    } else {
-      selection.forEach((p) => toggle(p))
-    }
-  }
 
   function setSort(k: SortKey): void {
     if (sortKey === k) {
@@ -405,18 +435,10 @@ function ProductsTable({ products, api, onEdit, onDelete }: ProductsProps): Reac
         <table className="data-table products-table">
           <thead>
             <tr>
-              <th className="th-check">
-                <input
-                  type="checkbox"
-                  className="row-check"
-                  title="Выбрать все"
-                  checked={allSelected}
-                  onChange={(e) => setAll(e.target.checked)}
-                />
-              </th>
               <SortTh label="Артикул" k="sku" sortKey={sortKey} sortOrder={sortOrder} onClick={setSort} />
               <SortTh label="Наименование" k="name" sortKey={sortKey} sortOrder={sortOrder} onClick={setSort} />
               <SortTh label="Габариты Д×Ш×В" k="volume" sortKey={sortKey} sortOrder={sortOrder} onClick={setSort} />
+              <SortTh label="Кол-во" k="qty" sortKey={sortKey} sortOrder={sortOrder} onClick={setSort} />
               <SortTh label="Вес" k="weight" sortKey={sortKey} sortOrder={sortOrder} onClick={setSort} />
               <SortTh label="Пункт назначения" k="destination" sortKey={sortKey} sortOrder={sortOrder} onClick={setSort} />
               <th className="ta-right">Действия</th>
@@ -426,22 +448,16 @@ function ProductsTable({ products, api, onEdit, onDelete }: ProductsProps): Reac
             {pageRows.map((p) => {
               const checked = selection.some((x) => x.sku === p.sku)
               return (
-                <tr key={p.sku} className={checked ? 'row-sel' : ''}>
-                  <td className="td-check">
-                    <input
-                      type="checkbox"
-                      className="row-check"
-                      checked={checked}
-                      onChange={() => toggle(p)}
-                    />
-                  </td>
-                  <td className="cell-sku">{p.sku}</td>
+                <tr key={p.sku} className={`row-click${checked ? ' row-sel' : ''}`} onClick={() => toggle(p)}>
+                  <td className="cell-sku" title={p.sku}>{shortId(p.sku)}</td>
                   <td className="cell-name">{p.name}</td>
                   <td>{p.g}</td>
+                  <td className="cell-qty">{p.qty}</td>
                   <td>{p.weight} г</td>
                   <td><span className="dest-badge">{p.destination}</span></td>
                   <td className="ta-right">
                     <div className="table-actions">
+                      <TableAction icon={IconEye} title="Подробнее" onClick={() => onView(p)} />
                       <TableAction icon={IconEdit} title="Редактировать" onClick={() => onEdit(p)} />
                       <TableAction icon={IconTrash} title="Удалить" danger onClick={() => onDelete(p.sku)} />
                     </div>
@@ -460,18 +476,18 @@ function ProductsTable({ products, api, onEdit, onDelete }: ProductsProps): Reac
 
       <div className="pagination">
         <span className="pg-info">
-          Показано {pageRows.length} из {filtered.length} товаров · всего {products.length}
+          Показано {pageRows.length} из {total} товаров · страница {safePage} из {totalPages}
         </span>
         <div className="pg-pages">
-          <button className="pg-btn" disabled={safePage <= 1} onClick={() => setPage(safePage - 1)}>‹</button>
+          <button className="pg-btn" disabled={safePage <= 1} onClick={() => onPageChange(safePage - 1)}>‹</button>
           {pageButtons().map((p, i) =>
             p === '…' ? (
               <span className="pg-more" key={`m${i}`}>…</span>
             ) : (
-              <button key={p} className={`pg-btn${p === safePage ? ' active' : ''}`} onClick={() => setPage(p)}>{p}</button>
+              <button key={p} className={`pg-btn${p === safePage ? ' active' : ''}`} onClick={() => onPageChange(p)}>{p}</button>
             )
           )}
-          <button className="pg-btn" disabled={safePage >= totalPages} onClick={() => setPage(safePage + 1)}>›</button>
+          <button className="pg-btn" disabled={safePage >= totalPages} onClick={() => onPageChange(safePage + 1)}>›</button>
         </div>
       </div>
 
@@ -586,6 +602,7 @@ function AddProductModal({ products, onSave, onClose }: { products: Product[]; o
       h: hh,
       d: dd,
       g: `${ww} × ${hh} × ${dd}`,
+      qty: 1,
       destination
     })
     onClose()
@@ -627,27 +644,183 @@ function AddProductModal({ products, onSave, onClose }: { products: Product[]; o
   )
 }
 
-/* ===== Page ===== */
+function ProductInfoModal({ product, onClose }: { product: Product; onClose: () => void }): ReactElement {
+  const volume = product.w * product.h * product.d
+  const yesNo = (v?: boolean): string => (v ? 'Да' : 'Нет')
+  const joined = (v?: string[] | null): string => (v && v.length ? v.join(', ') : '')
+  const fmtDate = (v?: string): string =>
+    v ? new Date(v).toLocaleString('ru-RU') : ''
+  const extra = (
+    <>
+      <div className="info-item">
+        <span>Не кантовать</span>
+        <b>{yesNo(product.mustStayUpright)}</b>
+      </div>
+      <div className="info-item">
+        <span>Штабелируемый</span>
+        <b>{yesNo(product.isStackable)}</b>
+      </div>
+      <div className="info-item">
+        <span>Только на полу</span>
+        <b>{yesNo(product.isFloorOnly)}</b>
+      </div>
+      <div className="info-item">
+        <span>Макс. нагрузка сверху</span>
+        <b>{product.maxTopLoad ? `${product.maxTopLoad} г` : '—'}</b>
+      </div>
+      <div className="info-item">
+        <span>Мин. доля опоры</span>
+        <b>{product.minSupportRatio ? `${product.minSupportRatio}` : '—'}</b>
+      </div>
+      <div className="info-item">
+        <span>Теги</span>
+        <b>{joined(product.tags) || '—'}</b>
+      </div>
+      <div className="info-item">
+        <span>Несовместимо с тегами</span>
+        <b>{joined(product.incompatibleTags) || '—'}</b>
+      </div>
+      <div className="info-item">
+        <span>Допустимые повороты</span>
+        <b>{joined(product.allowedRotations) || '—'}</b>
+      </div>
+      <div className="info-item">
+        <span>Обновлён</span>
+        <b>{fmtDate(product.updatedAt) || '—'}</b>
+      </div>
+    </>
+  )
+  return (
+    <div className="modal-wrap">
+      <div className="modal-scrim" onClick={onClose} />
+      <div className="modal modal-form">
+        <div className="modal-head">
+          <div>
+            <h3 className="modal-title">{product.name}</h3>
+            <p className="pack-sub">{product.sku}</p>
+          </div>
+          <button type="button" className="icon-btn modal-close" title="Закрыть" onClick={onClose}>
+            <IconX />
+          </button>
+        </div>
+        <div className="info-grid">
+          <div className="info-item">
+            <span>Артикул</span>
+            <b>{product.sku}</b>
+          </div>
+          <div className="info-item">
+            <span>Наименование</span>
+            <b>{product.name}</b>
+          </div>
+          <div className="info-item">
+            <span>Кол-во на складе</span>
+            <b>{product.qty} шт</b>
+          </div>
+          <div className="info-item">
+            <span>Вес</span>
+            <b>{product.weight} г</b>
+          </div>
+          <div className="info-item">
+            <span>Габариты (Д × Ш × В)</span>
+            <b>{product.w} × {product.h} × {product.d} мм</b>
+          </div>
+          <div className="info-item">
+            <span>Объём</span>
+            <b>{(volume / 1_000_000).toFixed(3)} м³</b>
+          </div>
+          <div className="info-item">
+            <span>Пункт назначения</span>
+            <b>{product.destination}</b>
+          </div>
+          {extra}
+        </div>
+        <div className="pack-foot">
+          <button type="button" className="btn-primary btn-sm" onClick={onClose}>Закрыть</button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function Dashboard({ api }: Props): ReactElement {
-  const [boxes, setBoxes] = useState<Box[]>(() => [...BOXES])
-  const [products, setProducts] = useState<Product[]>(() => [...PRODUCTS])
+  const [boxes, setBoxes] = useState<Box[]>([])
+  const [products, setProducts] = useState<Product[]>([])
+  const [productTotal, setProductTotal] = useState(0)
+  const [productPage, setProductPage] = useState(1)
+  const [productLoading, setProductLoading] = useState(true)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [editBox, setEditBox] = useState<Box | null>(null)
   const [addBoxOpen, setAddBoxOpen] = useState(false)
   const [editProduct, setEditProduct] = useState<Product | null>(null)
   const [addProductOpen, setAddProductOpen] = useState(false)
+  const [viewProduct, setViewProduct] = useState<Product | null>(null)
 
-  function deleteBox(id: string): void {
-    setBoxes((cur) => cur.filter((x) => x.id !== id))
+  const loadBoxes = useCallback(async () => {
+    const page = await boxesApi.list({ page: 1, limit: 100 })
+    setBoxes(page.items.map(toUiBox))
+  }, [])
+
+  const firstProductLoad = useRef(true)
+
+  const loadProductPage = useCallback(async (p: number) => {
+    if (firstProductLoad.current) {
+      firstProductLoad.current = false
+      setProductLoading(true)
+    }
+    try {
+      const res = await productsApi.list({ page: p, limit: PAGE_SIZE })
+      setProducts(res.items.map(toUiProduct))
+      setProductTotal(res.total)
+      setProductPage(res.page)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить товары')
+    } finally {
+      setProductLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void (async () => {
+      setLoading(true)
+      setError('')
+      try {
+        await loadBoxes()
+      } catch (err) {
+        setError(err instanceof ApiError ? err.message : 'Не удалось загрузить данные')
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }, [loadBoxes])
+
+  useEffect(() => {
+    void loadProductPage(1)
+  }, [loadProductPage])
+
+  async function deleteBox(id: string): Promise<void> {
+    try {
+      await boxesApi.remove(id)
+      await loadBoxes()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Не удалось удалить коробку')
+    }
   }
 
-  function deleteProduct(sku: string): void {
-    setProducts((cur) => cur.filter((x) => x.sku !== sku))
-    api.deselect(sku)
+  async function deleteProduct(sku: string): Promise<void> {
+    try {
+      await productsApi.remove(sku)
+      api.deselect(sku)
+      await loadProductPage(productPage)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Не удалось удалить товар')
+    }
   }
 
   return (
     <div className="content">
+      {error && <div className="toast">{error}</div>}
+
       <section className="panel left-panel">
         <div className="panel-head">
           <div>
@@ -659,7 +832,11 @@ export default function Dashboard({ api }: Props): ReactElement {
             Добавить коробки
           </button>
         </div>
-        <BoxesTable boxes={boxes} onEdit={setEditBox} onDelete={deleteBox} />
+        {loading ? (
+          <div className="route-loading">Загрузка…</div>
+        ) : (
+          <BoxesTable boxes={boxes} onEdit={setEditBox} onDelete={(id) => void deleteBox(id)} />
+        )}
       </section>
 
       <section className="panel right-panel">
@@ -673,28 +850,103 @@ export default function Dashboard({ api }: Props): ReactElement {
             Добавить товар
           </button>
         </div>
-        <ProductsTable products={products} api={api} onEdit={setEditProduct} onDelete={deleteProduct} />
+        {productLoading ? (
+          <div className="route-loading">Загрузка…</div>
+        ) : (
+          <ProductsTable
+            products={products}
+            total={productTotal}
+            page={productPage}
+            onPageChange={(p) => void loadProductPage(p)}
+            api={api}
+            onEdit={setEditProduct}
+            onDelete={(sku) => void deleteProduct(sku)}
+            onView={setViewProduct}
+          />
+        )}
       </section>
 
       {editBox && (
-        <EditBoxModal box={editBox} onClose={() => setEditBox(null)} onSave={(b) => {
-          setBoxes((cur) => cur.map((x) => (x.id === b.id ? b : x)))
-        }} />
+        <EditBoxModal
+          box={editBox}
+          onClose={() => setEditBox(null)}
+          onSave={(b) => {
+            void (async () => {
+              try {
+                await boxesApi.update(b.id, {
+                  name: b.name,
+                  type: b.type,
+                  width: b.w,
+                  height: b.h,
+                  depth: b.d,
+                  max_weight: b.maxWeight,
+                  available_count: b.qty,
+                })
+                await loadBoxes()
+              } catch (err) {
+                setError(err instanceof ApiError ? err.message : 'Не удалось сохранить коробку')
+              }
+            })()
+          }}
+        />
       )}
       {addBoxOpen && (
-        <AddBoxModal boxes={boxes} onClose={() => setAddBoxOpen(false)} onSave={(b) => {
-          setBoxes((cur) => [...cur, b])
-        }} />
+        <AddBoxModal
+          boxes={boxes}
+          onClose={() => setAddBoxOpen(false)}
+          onSave={(b) => {
+            void (async () => {
+              try {
+                await boxesApi.create(toBoxPayload(b))
+                await loadBoxes()
+              } catch (err) {
+                setError(err instanceof ApiError ? err.message : 'Не удалось создать коробку')
+              }
+            })()
+          }}
+        />
+      )}
+      {viewProduct && (
+        <ProductInfoModal product={viewProduct} onClose={() => setViewProduct(null)} />
       )}
       {editProduct && (
-        <EditProductModal product={editProduct} onClose={() => setEditProduct(null)} onSave={(p) => {
-          setProducts((cur) => cur.map((x) => (x.sku === p.sku ? p : x)))
-        }} />
+        <EditProductModal
+          product={editProduct}
+          onClose={() => setEditProduct(null)}
+          onSave={(p) => {
+            void (async () => {
+              try {
+                await productsApi.update(p.sku, {
+                  name: p.name,
+                  destination: p.destination,
+                  x: p.w,
+                  y: p.h,
+                  z: p.d,
+                  weight: p.weight,
+                })
+                await loadProductPage(productPage)
+              } catch (err) {
+                setError(err instanceof ApiError ? err.message : 'Не удалось сохранить товар')
+              }
+            })()
+          }}
+        />
       )}
       {addProductOpen && (
-        <AddProductModal products={products} onClose={() => setAddProductOpen(false)} onSave={(p) => {
-          setProducts((cur) => [...cur, p])
-        }} />
+        <AddProductModal
+          products={products}
+          onClose={() => setAddProductOpen(false)}
+          onSave={(p) => {
+            void (async () => {
+              try {
+                await productsApi.create(toProductPayload(p))
+                await loadProductPage(productPage)
+              } catch (err) {
+                setError(err instanceof ApiError ? err.message : 'Не удалось создать товар')
+              }
+            })()
+          }}
+        />
       )}
     </div>
   )

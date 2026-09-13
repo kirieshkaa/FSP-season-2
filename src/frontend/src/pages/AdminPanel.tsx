@@ -1,30 +1,26 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactElement } from 'react'
-import type { NavId } from './data.js'
-import { ADMIN_USERS, USER_STATUS_LABEL } from './data.js'
-import type { AdminUser, UserStatus } from './data.js'
+import { USER_STATUS_LABEL } from '../data/mock.js'
+import type { AdminUser, UserStatus } from '../data/mock.js'
 import {
   IconSearch, IconMore, IconCheck, IconX, IconBan, IconTrash,
   IconArrowUpDown, IconArrowUp, IconArrowDown, IconShield, IconUsers
-} from './icons.jsx'
-import DashboardShell from './DashboardShell.jsx'
-
-interface Props {
-  onLogout: () => void
-  onNav: (id: NavId) => void
-}
+} from '../components/ui/icons.jsx'
+import { adminApi, type UserAction } from '../api/admin'
+import { ApiError } from '../api/client'
+import { useAuth } from '../context/AuthContext'
+import { toUiAdminUser } from '../data/adapters'
 
 type SortField = 'username' | 'email' | 'role' | 'status' | 'created_at'
 type SortOrder = 'asc' | 'desc'
-
-const CURRENT_USER_ID = 'u001'
 
 function StatusBadge({ status }: { status: UserStatus }): ReactElement {
   return <span className={`status-badge st-${status}`}>{USER_STATUS_LABEL[status]}</span>
 }
 
-export default function AdminPanel({ onLogout, onNav }: Props): ReactElement {
-  const [users, setUsers] = useState<AdminUser[]>(ADMIN_USERS)
+export default function AdminPanel(): ReactElement {
+  const { user: currentUser } = useAuth()
+  const [users, setUsers] = useState<AdminUser[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | UserStatus>('all')
   const [sortField, setSortField] = useState<SortField>('role')
@@ -54,30 +50,44 @@ export default function AdminPanel({ onLogout, onNav }: Props): ReactElement {
     toastTimer.current = window.setTimeout(() => setToast(null), 2200)
   }
 
-  function runAction(userId: string, kind: 'approve' | 'reject' | 'block' | 'unblock' | 'delete'): void {
+  const loadUsers = useCallback(async () => {
+    const page = await adminApi.listUsers({ page: 1, limit: 100 })
+    setUsers(page.items.map(toUiAdminUser))
+  }, [])
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        await loadUsers()
+      } catch (err) {
+        showToast(err instanceof ApiError ? err.message : 'Не удалось загрузить пользователей')
+      }
+    })()
+  }, [loadUsers])
+
+  async function runAction(userId: string, kind: 'approve' | 'reject' | 'block' | 'unblock' | 'delete'): Promise<void> {
     setOpenMenu(null)
     setActionLoading(userId)
-    window.setTimeout(() => {
-      setUsers((prev) => {
-        if (kind === 'delete') return prev.filter((u) => u.id !== userId)
-        return prev.map((u) => {
-          if (u.id !== userId) return u
-          const status: UserStatus = kind === 'approve' || kind === 'unblock' ? 'approved'
-            : kind === 'reject' ? 'rejected'
-            : 'blocked'
-          return { ...u, status }
-        })
-      })
-      setActionLoading(null)
-      const messages: Record<string, string> = {
-        approve: 'Пользователь одобрен',
-        reject: 'Пользователь отклонён',
-        block: 'Пользователь заблокирован',
-        unblock: 'Пользователь разблокирован',
-        delete: 'Пользователь удалён'
+    const messages: Record<string, string> = {
+      approve: 'Пользователь одобрен',
+      reject: 'Пользователь отклонён',
+      block: 'Пользователь заблокирован',
+      unblock: 'Пользователь разблокирован',
+      delete: 'Пользователь удалён'
+    }
+    try {
+      if (kind === 'delete') {
+        await adminApi.deleteUser(userId)
+      } else {
+        await adminApi.applyAction(userId, kind as UserAction)
       }
+      await loadUsers()
       showToast(messages[kind])
-    }, 250)
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : 'Не удалось выполнить действие')
+    } finally {
+      setActionLoading(null)
+    }
   }
 
   function handleSort(field: SortField): void {
@@ -134,8 +144,7 @@ export default function AdminPanel({ onLogout, onNav }: Props): ReactElement {
   }), [users])
 
   return (
-    <DashboardShell activeNav="admin" onNav={onNav} onLogout={onLogout} render={() => (
-      <>
+    <>
       <div className="content content-single">
         <section className="panel admin-panel">
           <div className="panel-head">
@@ -211,7 +220,7 @@ export default function AdminPanel({ onLogout, onNav }: Props): ReactElement {
               </thead>
               <tbody>
                 {filteredUsers.map((user, index) => {
-                  const isProtected = user.role === 'admin' || user.id === CURRENT_USER_ID
+                  const isProtected = user.role === 'admin' || user.id === currentUser?.id
                   const isBusy = actionLoading === user.id
                   return (
                     <tr key={user.id} className="admin-tr" style={{ animationDelay: `${index * 40}ms` }}>
@@ -244,28 +253,28 @@ export default function AdminPanel({ onLogout, onNav }: Props): ReactElement {
                               <button
                                 className="dd-item"
                                 disabled={user.status === 'approved' || isProtected}
-                                onClick={() => runAction(user.id, 'approve')}
+                                onClick={() => void runAction(user.id, 'approve')}
                               >
                                 <IconCheck /> Одобрить
                               </button>
                               <button
                                 className="dd-item"
                                 disabled={user.status === 'rejected' || isProtected}
-                                onClick={() => runAction(user.id, 'reject')}
+                                onClick={() => void runAction(user.id, 'reject')}
                               >
                                 <IconX /> Отклонить
                               </button>
                               <button
                                 className="dd-item"
                                 disabled={user.status === 'blocked' || isProtected}
-                                onClick={() => runAction(user.id, 'block')}
+                                onClick={() => void runAction(user.id, 'block')}
                               >
                                 <IconBan /> Заблокировать
                               </button>
                               <button
                                 className="dd-item"
                                 disabled={user.status !== 'blocked' || isProtected}
-                                onClick={() => runAction(user.id, 'unblock')}
+                                onClick={() => void runAction(user.id, 'unblock')}
                               >
                                 <IconCheck /> Разблокировать
                               </button>
@@ -273,7 +282,7 @@ export default function AdminPanel({ onLogout, onNav }: Props): ReactElement {
                               <button
                                 className="dd-item danger"
                                 disabled={isProtected}
-                                onClick={() => runAction(user.id, 'delete')}
+                                onClick={() => void runAction(user.id, 'delete')}
                               >
                                 <IconTrash /> Удалить
                               </button>
@@ -305,8 +314,6 @@ export default function AdminPanel({ onLogout, onNav }: Props): ReactElement {
         </section>
       </div>
       {toast && <div className="toast">{toast}</div>}
-      </>
-      )}
-    />
+    </>
   )
 }

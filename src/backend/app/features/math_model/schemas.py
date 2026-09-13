@@ -1,5 +1,4 @@
-from enum import IntEnum
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -33,14 +32,8 @@ class Item(BaseModel):
 class SolveRequest(BaseModel):
     items: List[Item]
     boxes: Dict[str, Box]
-
-
-class ResultCode(IntEnum):
-    OK = 0
-    INFEASIBLE = 1
-    INVALID_INPUT = 100
-    EMPTY = 101
-    UNKNOWN_ERROR = 500
+    time_limit_ms: Optional[int] = Field(default=None, ge=100, le=600000)
+    solver_profile: Literal["fast", "balanced", "quality", "exact_small"] = "balanced"
 
 
 class Placement(BaseModel):
@@ -57,6 +50,5 @@ class PackedBox(BaseModel):
 
 
 class SolveResponse(BaseModel):
-    result_code: ResultCode = ResultCode.UNKNOWN_ERROR
     containers: List[PackedBox] = []
     unpacked: List[str] = []

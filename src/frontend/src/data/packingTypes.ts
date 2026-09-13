@@ -12,6 +12,7 @@ export type Point3D = {
 
 export type BackendBox = {
   box_type: string;
+  name: string;
   x: number;
   y: number;
   z: number;
@@ -20,12 +21,14 @@ export type BackendBox = {
 
 export type BackendProduct = {
   id: string;
+  name: string;
   destination: string;
   x: number;
   y: number;
   z: number;
   mass: number;
   stackable: boolean;
+  quantity: number;
 };
 
 export type BackendPlacement = {
@@ -42,7 +45,6 @@ export type BackendContainer = {
 };
 
 export type BackendPackingResult = {
-  result_code: number;
   containers: BackendContainer[];
 };
 
@@ -58,6 +60,7 @@ export type PackedContainer = {
   id: string;
   index: number;
   boxType: string;
+  boxName: string;
   box: {
     dimensions: Dimensions;
     maxMass: number;

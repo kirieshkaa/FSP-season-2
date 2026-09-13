@@ -1,9 +1,9 @@
 from contextlib import asynccontextmanager
-from enum import IntEnum
 from typing import Dict, List, Optional
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from packvium import pack_from_dict
@@ -40,14 +40,6 @@ class SolveRequest(BaseModel):
     boxes: Dict[str, Box]
 
 
-class ResultCode(IntEnum):
-    OK = 0
-    INFEASIBLE = 1
-    INVALID_INPUT = 100
-    EMPTY = 101
-    UNKNOWN_ERROR = 500
-
-
 class Placement(BaseModel):
     item_id: str
     x: float
@@ -62,17 +54,16 @@ class PackedBox(BaseModel):
 
 
 class SolveResponse(BaseModel):
-    result_code: ResultCode = ResultCode.UNKNOWN_ERROR
     containers: List[PackedBox] = []
     unpacked: List[str] = []
 
 
 class PacketSolver:
-    def solve(self, request: SolveRequest) -> SolveResponse:
+    def solve(self, request: SolveRequest) -> tuple[SolveResponse, int]:
         if not request.items:
-            return SolveResponse(result_code=ResultCode.INVALID_INPUT)
+            return SolveResponse(), 400
         if not request.boxes:
-            return SolveResponse(result_code=ResultCode.INVALID_INPUT)
+            return SolveResponse(), 400
 
         packvium_items = []
         for item in request.items:
@@ -103,29 +94,32 @@ class PacketSolver:
 
         packvium_containers = []
         for box_type, box in request.boxes.items():
-            count = box.count
-            for i in range(count):
-                pv_container = {
-                    "id": f"{box_type}_{i}",
-                    "inner_dimensions": {
+            pv_container = {
+                "id": box_type,
+                "quantity": box.count,
+                "inner_dimensions": {
                     "length": f"{box.depth:.3f}",
                     "width": f"{box.width:.3f}",
                     "height": f"{box.height:.3f}",
-                    },
-                }
-                if box.max_weight > 0:
-                    pv_container["max_payload"] = f"{box.max_weight:.3f} kg"
-                packvium_containers.append(pv_container)
+                },
+            }
+            if box.max_weight > 0:
+                pv_container["max_payload"] = f"{box.max_weight:.3f} kg"
+            packvium_containers.append(pv_container)
 
         try:
             result = pack_from_dict({
                 "items": packvium_items,
                 "containers": packvium_containers,
+                "configuration": {
+                    "solver_profile": "balanced",
+                    "time_limit_ms": 2000,
+                },
             })
         except UnsupportedFeatureError:
-            return SolveResponse(result_code=ResultCode.INVALID_INPUT)
+            return SolveResponse(), 400
         except Exception:
-            return SolveResponse(result_code=ResultCode.UNKNOWN_ERROR)
+            return SolveResponse(), 500
 
         packed_boxes: List[PackedBox] = []
         for container in result.get("containers", []):
@@ -151,17 +145,9 @@ class PacketSolver:
         unpacked_ids = [u.get("item_id", "") for u in result.get("unpacked_items", [])]
 
         if unpacked_ids:
-            return SolveResponse(
-                result_code=ResultCode.INFEASIBLE,
-                containers=packed_boxes,
-                unpacked=unpacked_ids,
-            )
+            return SolveResponse(containers=packed_boxes, unpacked=unpacked_ids), 409
 
-        return SolveResponse(
-            result_code=ResultCode.OK,
-            containers=packed_boxes,
-            unpacked=[],
-        )
+        return SolveResponse(containers=packed_boxes, unpacked=[]), 200
 
 
 solver = PacketSolver()
@@ -197,5 +183,9 @@ async def health():
 
 
 @app.post("/solve", response_model=SolveResponse)
-async def solve(request: SolveRequest) -> SolveResponse:
-    return solver.solve(request)
+async def solve(request: SolveRequest) -> JSONResponse:
+    response, code = solver.solve(request)
+    return JSONResponse(
+        status_code=code,
+        content=response.model_dump(mode="json"),
+    )

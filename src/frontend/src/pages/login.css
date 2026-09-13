@@ -88,8 +88,11 @@ body.theme-yandex {
 }
 
 .brand-block {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
   padding: 6px 16px;
   background: var(--color-primary);
   color: var(--color-text-inverse);
@@ -100,11 +103,17 @@ body.theme-yandex {
   letter-spacing: -0.01em;
 }
 
+.brand-block svg {
+  font-size: 22px;
+  flex: none;
+}
+
 .auth-title {
   margin: 24px 0 2px;
   font-size: 18px;
   font-weight: 700;
   color: var(--color-text);
+  text-align: center;
 }
 
 .auth-subtitle {
@@ -112,6 +121,7 @@ body.theme-yandex {
   font-size: 12px;
   font-weight: 400;
   color: var(--color-text-muted);
+  text-align: center;
 }
 
 .auth-form {
@@ -127,28 +137,70 @@ body.theme-yandex {
 }
 
 .field-label {
-  font-size: 13px;
-  font-weight: 600;
+  position: absolute;
+  left: 36px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  font-weight: 400;
   color: var(--color-text-muted);
+  pointer-events: none;
+  transition: top 0.15s ease, transform 0.15s ease, font-size 0.15s ease, color 0.15s ease;
+}
+
+.input-wrap input:focus + .field-label,
+.input-wrap input:not(:placeholder-shown) + .field-label {
+  top: 7px;
+  transform: translateY(0);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.input-wrap input:focus + .field-label {
+  color: var(--color-primary);
 }
 
 .input-wrap {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 40px;
+  position: relative;
+  height: 44px;
   padding: 0 12px;
   background: rgba(255, 255, 255, 0.55);
   border: 1px solid var(--color-border);
   border-radius: 6px;
   color: var(--color-text-muted);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.4s ease, color 0.4s ease;
+}
+
+.brand-block,
+.auth-title,
+.auth-subtitle,
+.input-wrap input,
+.field-error,
+.auth-hint,
+.btn-primary {
+  transition: background-color 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease, color 0.4s ease;
+}
+
+.field-label {
+  transition:
+    top 0.15s ease, transform 0.15s ease, font-size 0.15s ease,
+    background-color 0.4s ease, color 0.4s ease;
 }
 
 .input-wrap:focus-within {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px var(--color-focus-ring);
   color: var(--color-text);
+}
+
+.input-wrap.has-error {
+  border-color: var(--color-secondary);
+}
+
+.input-wrap.has-error:focus-within {
+  border-color: var(--color-secondary);
 }
 
 .input-icon {
@@ -158,6 +210,8 @@ body.theme-yandex {
 .input-wrap input {
   flex: 1;
   min-width: 0;
+  height: 100%;
+  padding: 16px 0 2px;
   border: none;
   outline: none;
   background: transparent;
@@ -167,6 +221,16 @@ body.theme-yandex {
 
 .input-wrap input::placeholder {
   color: var(--color-text-muted);
+}
+
+/* Chrome autofill красит фон поля в жёлтый — накрываем его тенью того же цвета, что фон .input-wrap */
+.input-wrap input:-webkit-autofill,
+.input-wrap input:-webkit-autofill:hover,
+.input-wrap input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--color-text);
+  -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.55) inset;
+  caret-color: var(--color-text);
+  transition: background-color 9999s ease-out;
 }
 
 .input-toggle {
@@ -214,6 +278,10 @@ body.theme-yandex {
   font-weight: 600;
   font-family: var(--font-theme);
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.05s ease;
 }
 
@@ -232,7 +300,7 @@ body.theme-yandex {
 
 .auth-hint {
   margin: 14px 0 0;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.5;
   color: var(--text-muted, #555);
   text-align: center;
@@ -240,6 +308,15 @@ body.theme-yandex {
   border: 1px solid rgba(255, 255, 255, 0.5);
   padding: 8px 12px;
   border-radius: 10px;
+}
+
+.auth-hint a {
+  transition: color 0.15s ease;
+  color: var(--color-primary, #005bff);
+}
+
+.auth-hint a:hover {
+  color: var(--color-accent, #ff2f6d);
 }
 
 .theme-switcher {
@@ -299,6 +376,11 @@ body.theme-yandex {
   object-fit: cover;
   display: block;
   border-radius: 50%;
+}
+
+/* Ozon logo is a squircle with transparent frame — scale it up so the circle crop fills completely and it looks round like the other icons */
+.theme-btn[data-theme='ozon'] img {
+  transform: scale(1.25);
 }
 
 .theme-btn:hover {

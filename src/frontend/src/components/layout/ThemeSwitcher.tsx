@@ -1,22 +1,19 @@
 import type { ReactElement } from 'react'
-import type { ThemeKey } from './themes.js'
-import { THEMES, THEME_KEYS } from './themes.js'
+import { THEMES, THEME_KEYS } from '../../constants/themes'
+import { useTheme } from '../../context/ThemeContext'
 
-interface Props {
-  current: ThemeKey
-  onChange: (key: ThemeKey) => void
-}
+export default function ThemeSwitcher(): ReactElement {
+  const { theme, setTheme } = useTheme()
 
-export default function ThemeSwitcher({ current, onChange }: Props): ReactElement {
   return (
     <div className="theme-switcher" role="group" aria-label="Тема маркетплейса">
       {THEME_KEYS.map((key) => (
         <button
           key={key}
-          className={`theme-btn${current === key ? ' active' : ''}`}
+          className={`theme-btn${theme === key ? ' active' : ''}`}
           data-theme={key}
           title={THEMES[key].name}
-          onClick={() => onChange(key)}
+          onClick={() => setTheme(key)}
         >
           <img src={THEMES[key].icon} alt={THEMES[key].name} />
         </button>

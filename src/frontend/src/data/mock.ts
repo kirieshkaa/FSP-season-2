@@ -19,6 +19,7 @@ export type BoxStatus = 'in' | 'low' | 'critical'
 export interface Box {
   id: string
   name: string
+  type: string
   w: number
   h: number
   d: number
@@ -28,11 +29,11 @@ export interface Box {
 }
 
 export const BOXES: Box[] = [
-  { id: 'S', name: 'Коробка S', w: 200, h: 150, d: 100, qty: 342, maxWeight: 5, status: 'in' },
-  { id: 'M', name: 'Коробка M', w: 350, h: 250, d: 200, qty: 128, maxWeight: 10, status: 'in' },
-  { id: 'L', name: 'Коробка L', w: 500, h: 400, d: 300, qty: 64, maxWeight: 15, status: 'low' },
-  { id: 'XL', name: 'Коробка XL', w: 600, h: 500, d: 400, qty: 23, maxWeight: 25, status: 'low' },
-  { id: 'XXL', name: 'Коробка XXL', w: 800, h: 600, d: 500, qty: 8, maxWeight: 40, status: 'critical' }
+  { id: 'S', name: 'Коробка S', type: 'S', w: 200, h: 150, d: 100, qty: 342, maxWeight: 5, status: 'in' },
+  { id: 'M', name: 'Коробка M', type: 'M', w: 350, h: 250, d: 200, qty: 128, maxWeight: 10, status: 'in' },
+  { id: 'L', name: 'Коробка L', type: 'L', w: 500, h: 400, d: 300, qty: 64, maxWeight: 15, status: 'low' },
+  { id: 'XL', name: 'Коробка XL', type: 'XL', w: 600, h: 500, d: 400, qty: 23, maxWeight: 25, status: 'low' },
+  { id: 'XXL', name: 'Коробка XXL', type: 'XXL', w: 800, h: 600, d: 500, qty: 8, maxWeight: 40, status: 'critical' }
 ]
 
 export function deriveStatus(qty: number): BoxStatus {
@@ -60,7 +61,26 @@ export interface Product {
   w: number
   h: number
   d: number
+  qty: number
   destination: string
+  /** Товар нельзя кантовать / класть набок */
+  mustStayUpright?: boolean
+  /** Допускает штабелирование */
+  isStackable?: boolean
+  /** Максимальная нагрузка сверху, г */
+  maxTopLoad?: number
+  /** Минимальная доля площади опоры (0..1) */
+  minSupportRatio?: number
+  /** Теги, с которыми товар несовместим в одной коробке */
+  incompatibleTags?: string[]
+  /** Допустимые повороты */
+  allowedRotations?: string[] | null
+  /** Размещать только на полу */
+  isFloorOnly?: boolean
+  /** Теги товара */
+  tags?: string[]
+  createdAt?: string
+  updatedAt?: string
 }
 
 export const DESTINATIONS: string[] = ['Москва', 'Санкт-Петербург', 'Казань', 'Екатеринбург', 'Новосибирск', 'Краснодар']
@@ -82,18 +102,18 @@ export function pickBox(product: Product): Box {
 }
 
 export const PRODUCTS: Product[] = [
-  { sku: 'SKU-001', name: 'Наушники Bluetooth Sony WH-1000XM5', g: '180 × 120 × 80', weight: 250, w: 180, h: 120, d: 80, destination: 'Москва' },
-  { sku: 'SKU-002', name: 'Чехол для iPhone 14 Silicone Case', g: '165 × 85 × 15', weight: 45, w: 165, h: 85, d: 15, destination: 'Санкт-Петербург' },
-  { sku: 'SKU-003', name: 'Зарядное устройство GaN 65W USB-C', g: '100 × 60 × 40', weight: 120, w: 100, h: 60, d: 40, destination: 'Казань' },
-  { sku: 'SKU-004', name: 'Портативная колонка JBL Charge 5', g: '220 × 95 × 95', weight: 580, w: 220, h: 95, d: 95, destination: 'Москва' },
-  { sku: 'SKU-005', name: 'USB-кабель Type-C 1.5 м', g: '120 × 50 × 20', weight: 30, w: 120, h: 50, d: 20, destination: 'Екатеринбург' },
-  { sku: 'SKU-006', name: 'Защитное стекло Premium Pro 9H', g: '190 × 90 × 10', weight: 15, w: 190, h: 90, d: 10, destination: 'Новосибирск' },
-  { sku: 'SKU-007', name: 'Механическая клавиатура RK Royal', g: '450 × 150 × 45', weight: 890, w: 450, h: 150, d: 45, destination: 'Краснодар' },
-  { sku: 'SKU-008', name: 'Игровая мышь Logitech G102 Lightsync', g: '120 × 65 × 40', weight: 85, w: 120, h: 65, d: 40, destination: 'Москва' },
-  { sku: 'SKU-009', name: 'Монитор для подбора габаритов AOC 24"', g: '540 × 330 × 60', weight: 2800, w: 540, h: 330, d: 60, destination: 'Санкт-Петербург' },
-  { sku: 'SKU-010', name: 'Умная колонка Яндекс Станция Мини', g: '130 × 90 × 90', weight: 320, w: 130, h: 90, d: 90, destination: 'Казань' },
-  { sku: 'SKU-011', name: 'Веб-камера Logitech C270 HD', g: '75 × 40 × 40', weight: 75, w: 75, h: 40, d: 40, destination: 'Екатеринбург' },
-  { sku: 'SKU-012', name: 'Роутер TP-Link Archer AX10', g: '280 × 200 × 75', weight: 640, w: 280, h: 200, d: 75, destination: 'Новосибирск' }
+  { sku: 'SKU-001', name: 'Наушники Bluetooth Sony WH-1000XM5', g: '180 × 120 × 80', weight: 250, w: 180, h: 120, d: 80, destination: 'Москва' , qty: 10 },
+  { sku: 'SKU-002', name: 'Чехол для iPhone 14 Silicone Case', g: '165 × 85 × 15', weight: 45, w: 165, h: 85, d: 15, destination: 'Санкт-Петербург' , qty: 10 },
+  { sku: 'SKU-003', name: 'Зарядное устройство GaN 65W USB-C', g: '100 × 60 × 40', weight: 120, w: 100, h: 60, d: 40, destination: 'Казань' , qty: 10 },
+  { sku: 'SKU-004', name: 'Портативная колонка JBL Charge 5', g: '220 × 95 × 95', weight: 580, w: 220, h: 95, d: 95, destination: 'Москва' , qty: 10 },
+  { sku: 'SKU-005', name: 'USB-кабель Type-C 1.5 м', g: '120 × 50 × 20', weight: 30, w: 120, h: 50, d: 20, destination: 'Екатеринбург' , qty: 10 },
+  { sku: 'SKU-006', name: 'Защитное стекло Premium Pro 9H', g: '190 × 90 × 10', weight: 15, w: 190, h: 90, d: 10, destination: 'Новосибирск' , qty: 10 },
+  { sku: 'SKU-007', name: 'Механическая клавиатура RK Royal', g: '450 × 150 × 45', weight: 890, w: 450, h: 150, d: 45, destination: 'Краснодар' , qty: 10 },
+  { sku: 'SKU-008', name: 'Игровая мышь Logitech G102 Lightsync', g: '120 × 65 × 40', weight: 85, w: 120, h: 65, d: 40, destination: 'Москва' , qty: 10 },
+  { sku: 'SKU-009', name: 'Монитор для подбора габаритов AOC 24"', g: '540 × 330 × 60', weight: 2800, w: 540, h: 330, d: 60, destination: 'Санкт-Петербург' , qty: 10 },
+  { sku: 'SKU-010', name: 'Умная колонка Яндекс Станция Мини', g: '130 × 90 × 90', weight: 320, w: 130, h: 90, d: 90, destination: 'Казань' , qty: 10 },
+  { sku: 'SKU-011', name: 'Веб-камера Logitech C270 HD', g: '75 × 40 × 40', weight: 75, w: 75, h: 40, d: 40, destination: 'Екатеринбург' , qty: 10 },
+  { sku: 'SKU-012', name: 'Роутер TP-Link Archer AX10', g: '280 × 200 × 75', weight: 640, w: 280, h: 200, d: 75, destination: 'Новосибирск', qty: 10 },
 ]
 
 export type UserStatus = 'approved' | 'pending' | 'rejected' | 'blocked'

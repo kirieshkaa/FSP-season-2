@@ -62,13 +62,40 @@ class TestMathModelSolve:
 
         assert response.status_code == 200, response.text
         body = response.json()
-        assert body["result_code"] == 0
+        assert "result_code" not in body
         assert len(body["containers"]) == 1
         assert body["containers"][0]["box_type"] == "c1"
         assert body["containers"][0]["placements"][0]["item_id"] == "i1#1"
         assert body["unpacked"] == []
 
-    async def test_empty_items_is_invalid_input(self, client, container):
+    async def test_long_item_fits_in_long_box(self, client, container):
+        # Box dimensions are (width=x, height=y, depth=z); a long-but-low
+        # item (x=100, y=20, z=10) must pack into the long box axis, not a
+        # rotated one. Guards the solver axis mapping.
+        token = await _token_for(client, container, "solver", UserRole.ADMIN)
+
+        response = await client.post(
+            f"{BASE}/math-model/solve",
+            json=_payload(
+                items=[
+                    {
+                        "id": "i1",
+                        "x": 100.0,
+                        "y": 20.0,
+                        "z": 10.0,
+                        "quantity": 1,
+                    }
+                ],
+                boxes={
+                    "c1": {"width": 110.0, "height": 30.0, "depth": 30.0},
+                },
+            ),
+            headers=_h(token),
+        )
+
+        assert response.status_code == 200, response.text
+        placement = response.json()["containers"][0]["placements"][0]
+        assert placement["item_id"] == "i1#1"
         token = await _token_for(client, container, "solver", UserRole.ADMIN)
 
         response = await client.post(
@@ -77,10 +104,10 @@ class TestMathModelSolve:
             headers=_h(token),
         )
 
-        assert response.status_code == 200
-        assert response.json()["result_code"] == 100
+        assert response.status_code == 400
+        assert "result_code" not in response.json()
 
-    async def test_empty_boxes_is_invalid_input(self, client, container):
+    async def test_empty_boxes_is_400(self, client, container):
         token = await _token_for(client, container, "solver", UserRole.ADMIN)
 
         response = await client.post(
@@ -89,10 +116,10 @@ class TestMathModelSolve:
             headers=_h(token),
         )
 
-        assert response.status_code == 200
-        assert response.json()["result_code"] == 100
+        assert response.status_code == 400
+        assert "result_code" not in response.json()
 
-    async def test_oversized_item_is_infeasible(self, client, container):
+    async def test_oversized_item_is_infeasible_409(self, client, container):
         token = await _token_for(client, container, "solver", UserRole.ADMIN)
         payload = _payload(
             items=[{"id": "big", "x": 500.0, "y": 500.0, "z": 500.0}]
@@ -102,9 +129,9 @@ class TestMathModelSolve:
             f"{BASE}/math-model/solve", json=payload, headers=_h(token)
         )
 
-        assert response.status_code == 200
+        assert response.status_code == 409
         body = response.json()
-        assert body["result_code"] == 1
+        assert "result_code" not in body
         assert body["unpacked"] == ["big#1"]
 
     async def test_invalid_dimensions_rejected_400(self, client, container):
@@ -119,6 +146,19 @@ class TestMathModelSolve:
 
         assert response.status_code == 400
 
+    async def test_invalid_rotation_is_400(self, client, container):
+        token = await _token_for(client, container, "solver", UserRole.ADMIN)
+        payload = _payload(
+            items=[{"id": "i1", "allowed_rotations": ["sideways"]}]
+        )
+
+        response = await client.post(
+            f"{BASE}/math-model/solve", json=payload, headers=_h(token)
+        )
+
+        assert response.status_code == 400
+        assert "result_code" not in response.json()
+
     async def test_counts_expand_containers(self, client, container):
         token = await _token_for(client, container, "solver", UserRole.ADMIN)
         payload = _payload(
@@ -131,7 +171,7 @@ class TestMathModelSolve:
 
         assert response.status_code == 200
         body = response.json()
-        assert body["result_code"] == 0
+        assert "result_code" not in body
         # Only the containers actually used are reported, but the box_type
         # is mapped back to the original key (not the internal "c1_0").
         assert len(body["containers"]) >= 1
@@ -148,4 +188,4 @@ class TestMathModelSolve:
         )
 
         assert response.status_code == 200
-        assert response.json()["result_code"] == 0
+        assert "result_code" not in response.json()
