@@ -69,6 +69,44 @@
   flex: none;
 }
 
+/* ===== Header nav (inline, replaces sidebar) ===== */
+.header-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.header-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--text-muted, #555);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.header-nav-link:hover {
+  background: var(--color-surface-muted, #f1f5fe);
+  color: var(--color-primary, #005bff);
+}
+
+.header-nav-link.active {
+  background: color-mix(in srgb, var(--color-primary, #005bff) 11%, transparent);
+  color: var(--color-primary, #005bff);
+}
+
+.header-nav-link svg { flex: none; }
+
 .quick-metric {
   display: flex;
   align-items: center;
@@ -99,11 +137,10 @@
 .user-chip {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 4px 12px 4px 4px;
+  padding: 4px;
   border-radius: 999px;
-  background: var(--color-surface, #fff);
-  border: 1px solid var(--color-border, #d8e2f2);
+  border: none;
+  background: transparent;
 }
 
 .avatar {
@@ -405,7 +442,7 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  text-align: left;
+  text-align: center;
   padding: 10px 16px;
   font-size: 11px;
   font-weight: 700;
@@ -422,6 +459,11 @@
   border-bottom: 1px solid var(--color-border, #d8e2f2);
   color: var(--text-strong, #1a1d27);
   white-space: nowrap;
+  text-align: center;
+}
+
+.data-table tbody td.ta-right {
+  text-align: right;
 }
 
 .sel-col {
@@ -451,6 +493,10 @@
 }
 
 .ta-right {
+  text-align: right;
+}
+
+.data-table thead th.ta-right {
   text-align: right;
 }
 
@@ -543,9 +589,10 @@
 /* ===== Pagination ===== */
 .pagination {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: center;
+  gap: 8px;
   padding: 10px 16px;
   border-top: 1px solid var(--color-border, #d8e2f2);
   flex: none;
@@ -661,6 +708,11 @@
 .stat-chip.warn .stat-num { color: #d97c06; }
 .stat-chip.danger .stat-num { color: #e0223b; }
 
+.stat-label svg { color: var(--color-primary, #005bff); }
+.stat-chip.ok .stat-label svg { color: #0b9e6d; }
+.stat-chip.warn .stat-label svg { color: #d97c06; }
+.stat-chip.danger .stat-label svg { color: #e0223b; }
+
 .stat-label {
   display: inline-flex;
   align-items: center;
@@ -725,6 +777,10 @@
   }
 }
 
+.data-table tbody tr.row-enter {
+  animation: rowIn 0.3s ease both;
+}
+
 .cell-id {
   font-size: 11px;
   font-weight: 600;
@@ -734,6 +790,78 @@
 .cell-date {
   color: var(--text-muted, #555);
   font-size: 12px;
+}
+
+.approve-toggle {
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.approve-toggle input {
+  position: absolute;
+  opacity: 0;
+}
+
+.approve-toggle .toggle-track {
+  display: block;
+  width: 36px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--color-border, #d8e2f2);
+  transition: background 0.2s ease;
+}
+
+.approve-toggle input:checked + .toggle-track {
+  background: var(--color-primary, #005bff);
+}
+
+.approve-toggle .toggle-track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s ease;
+}
+
+.approve-toggle input:checked + .toggle-track::after {
+  transform: translateX(16px);
+}
+
+.approve-toggle input:disabled + .toggle-track {
+  opacity: 0.45;
+}
+
+.auto-approve {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: var(--color-surface-muted, #f1f5fe);
+  border: 1px solid var(--color-border, #d8e2f2);
+  margin-bottom: 12px;
+}
+
+.auto-approve-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.auto-approve-copy b {
+  font-size: 13px;
+  color: var(--text, #222);
+}
+
+.auto-approve-copy span {
+  font-size: 12px;
+  color: var(--text-muted, #555);
 }
 
 .role-admin {
@@ -1246,6 +1374,22 @@
   font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
+}
+
+.stackable-badge {
+  display: inline-flex;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(224, 34, 59, 0.12);
+  color: #c71c32;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.stackable-badge.yes {
+  background: rgba(25, 135, 84, 0.12);
+  color: #198754;
 }
 
 .empty-cell {

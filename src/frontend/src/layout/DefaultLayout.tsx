@@ -1,28 +1,29 @@
-import { useState } from 'react'
 import type { ReactElement, ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import type { NavId } from '../data/mock.js'
 import { NAV_ITEMS } from '../data/mock.js'
-import { IconMenu, IconLogout, IconBox, NavIcon } from '../components/ui/icons.jsx'
+import { IconLogout, IconBox, NavIcon } from '../components/ui/icons.jsx'
 import { useAuth } from '../context/AuthContext'
 import ThemeSwitcher from '../components/layout/ThemeSwitcher'
 
 interface Props {
-  activeNav?: NavId
   children: ReactNode
 }
 
+const HEADER_NAV: { id: NavId; to: string }[] = [
+  { id: 'boxes', to: '/boxes' },
+  { id: 'products', to: '/products' },
+  { id: 'admin', to: '/admin' },
+]
+
 /**
- * Authenticated app chrome: topbar + sidebar + routed content.
- * Sidebar items map to routes where they exist; the rest stay on /dashboard.
+ * Authenticated app chrome: header with inline nav, avatar profile entry, content.
  */
-export default function DefaultLayout({ activeNav = 'boxes', children }: Props): ReactElement {
-  const [menuOpen, setMenuOpen] = useState(false)
+export default function DefaultLayout({ children }: Props): ReactElement {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
 
   const displayName = user?.name ?? 'Пользователь'
-  const roleLabel = user?.role === 'admin' ? 'Администратор' : 'Упаковщик'
   const initials = displayName
     .split(' ')
     .map((part) => part[0])
@@ -32,25 +33,33 @@ export default function DefaultLayout({ activeNav = 'boxes', children }: Props):
 
   async function handleLogout(): Promise<void> {
     await logout()
-    navigate('/auth', { replace: true })
+    navigate('/login', { replace: true })
   }
 
   return (
     <div className="dashboard">
       <header className="topbar">
         <div className="topbar-left">
-          <button className="icon-btn burger-btn" title="Меню" onClick={() => setMenuOpen((v) => !v)}>
-            <IconMenu />
-          </button>
           <div className="topbar-title"><IconBox />Упаковка заказов</div>
         </div>
+        <nav className="header-nav" aria-label="Разделы">
+          {HEADER_NAV.map((item) => {
+            const label = NAV_ITEMS.find((n) => n.id === item.id)?.label ?? item.id
+            return (
+              <NavLink
+                key={item.id}
+                to={item.to}
+                className={({ isActive }) => `header-nav-link${isActive ? ' active' : ''}`}
+              >
+                <NavIcon id={item.id} />
+                <span>{label}</span>
+              </NavLink>
+            )
+          })}
+        </nav>
         <div className="topbar-right">
           <NavLink to="/profile" className="user-chip" title="Профиль">
             <div className="avatar">{initials || 'U'}</div>
-            <div className="user-meta">
-              <span className="user-name">{displayName}</span>
-              <span className="user-role">{roleLabel}</span>
-            </div>
           </NavLink>
           <button className="icon-btn logout-btn" title="Выйти" onClick={() => void handleLogout()}>
             <IconLogout />
@@ -59,24 +68,6 @@ export default function DefaultLayout({ activeNav = 'boxes', children }: Props):
       </header>
 
       <div className="dash-body">
-        <aside className={`sidebar${menuOpen ? ' open' : ''}`}>
-          <nav className="side-nav">
-            {NAV_ITEMS.map((item) => (
-              <NavLink
-                key={item.id}
-                to={item.id === 'admin' ? '/admin' : '/dashboard'}
-                className={() =>
-                  `side-item${activeNav === item.id ? ' active' : ''}`
-                }
-                onClick={() => setMenuOpen(false)}
-              >
-                <NavIcon id={item.id} />
-                <span className="side-label">{item.label}</span>
-              </NavLink>
-            ))}
-          </nav>
-        </aside>
-
         <div className="dash-main">{children}</div>
       </div>
 

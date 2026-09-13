@@ -37,6 +37,10 @@ function formatDimensions({ width, depth, height }: Dimensions) {
   return `${formatMm(width)} x ${formatMm(depth)} x ${formatMm(height)}`;
 }
 
+function fmtCoord(value: number) {
+  return Number.isInteger(value) ? String(value) : String(Math.round(value * 10) / 10);
+}
+
 function getVolume({ width, depth, height }: Dimensions) {
   return width * depth * height;
 }
@@ -355,7 +359,7 @@ function ItemList({
   placementStep: number;
   onSelectItem: (itemId: string) => void;
 }) {
-  const [collapsed, setCollapsed] = useState(true);
+  const [collapsed, setCollapsed] = useState(false);
   const current =
     placementStep >= 2 ? container.items[Math.min(container.items.length - 1, placementStep - 2)] : null;
 
@@ -372,6 +376,9 @@ function ItemList({
             </span>
             <span>{current.destination}</span>
             <span className="step-product-meta">Слой {current.layer}</span>
+            <span className="item-coords">
+              x {fmtCoord(current.position.x)} · y {fmtCoord(current.position.y)} · z {fmtCoord(current.position.z)} мм
+            </span>
             {!current.stackable && (
               <span className="item-warning">
                 <AlertTriangle size={15} />
@@ -414,6 +421,9 @@ function ItemList({
                   <span>{formatDimensions(item.dimensions)} · {item.mass < 1000 ? `${item.mass.toFixed(0)} г` : `${(item.mass / 1000).toFixed(1)} кг`}</span>
                   <span>{item.destination}</span>
                   <span>Слой {item.layer}</span>
+                  <span className="item-coords">
+                    x {fmtCoord(item.position.x)} · y {fmtCoord(item.position.y)} · z {fmtCoord(item.position.z)} мм
+                  </span>
                 </span>
                 {!item.stackable && (
                   <span className="item-warning">
@@ -439,7 +449,7 @@ function BoxMenu({
   selectedContainerId: string;
   onSelectContainer: (containerId: string) => void;
 }) {
-  const [collapsed, setCollapsed] = useState(true);
+  const [collapsed, setCollapsed] = useState(false);
   const selectedBox = containers.find((c) => c.id === selectedContainerId) ?? null;
 
   return (
@@ -452,7 +462,7 @@ function BoxMenu({
               <strong>{selectedBox.boxName}</strong>
               <span>{selectedBox.items.length} товаров</span>
               <span>
-                {(getWeight(selectedBox.items) / 1000).toFixed(1)} / {selectedBox.box.maxMass} кг (
+                {(getWeight(selectedBox.items) / 1000).toFixed(1)} / {(selectedBox.box.maxMass / 1000).toFixed(0)} кг (
                 {Math.round(selectedBox.fillRate * 100)}%)
               </span>
               <span>{formatDimensions(selectedBox.box.dimensions)}</span>
@@ -493,7 +503,7 @@ function BoxMenu({
                     <strong title={container.boxType}>{container.boxName}</strong>
                     <span>{container.items.length} товаров</span>
                     <span>
-                      {(boxWeight / 1000).toFixed(1)} / {container.box.maxMass} кг (
+                      {(boxWeight / 1000).toFixed(1)} / {(container.box.maxMass / 1000).toFixed(0)} кг (
                       {Math.round(container.fillRate * 100)}%)
                     </span>
                     <span>{formatDimensions(container.box.dimensions)}</span>
@@ -526,8 +536,11 @@ function PackingPage() {
   });
   const [solverProfile, setSolverProfile] = useState<"fast" | "balanced" | "quality">("fast");
   const [timeLimitMs, setTimeLimitMs] = useState(20000);
+  const [draftProfile, setDraftProfile] = useState<"fast" | "balanced" | "quality">("fast");
+  const [draftTime, setDraftTime] = useState(20000);
 
-  const load = useCallback(async () => {
+  const load = useCallback(
+    async (profile: "fast" | "balanced" | "quality" = solverProfile, time = timeLimitMs) => {
     setLoading(true);
     setError("");
     try {
@@ -577,19 +590,13 @@ id: product.id,
       };
         return {
           id: product.id,
+          name: product.name,
           x: product.x,
           y: product.y,
           z: product.z,
           weight: product.weight,
           quantity: product.quantity,
-          must_stay_upright: product.must_stay_upright,
           is_stackable: product.is_stackable,
-          max_top_load: product.max_top_load,
-          minimum_support_ratio: product.minimum_support_ratio,
-          incompatible_tags: product.incompatible_tags,
-          allowed_rotations: product.allowed_rotations,
-          is_floor_only: product.is_floor_only,
-          tags: product.tags,
         };
       });
 
@@ -602,8 +609,8 @@ id: product.id,
       const response: SolveResponse = await mathModelApi.solve({
         items: solverItems,
         boxes: solverBoxes,
-        solver_profile: solverProfile,
-        time_limit_ms: timeLimitMs,
+        solver_profile: profile,
+        time_limit_ms: time,
       });
 
       if (response.containers.length > 0) {
@@ -629,7 +636,9 @@ id: product.id,
     } finally {
       setLoading(false);
     }
-  }, [selectedSkus, solverProfile, timeLimitMs]);
+  },
+    [selectedSkus],
+  );
 
   useEffect(() => {
     void load();
@@ -700,8 +709,8 @@ id: product.id,
                 <span className="solve-label">Алгоритм</span>
                 <select
                   className="solve-select"
-                  value={solverProfile}
-                  onChange={(e) => setSolverProfile(e.target.value as "fast" | "balanced" | "quality")}
+                  value={draftProfile}
+                  onChange={(e) => setDraftProfile(e.target.value as "fast" | "balanced" | "quality")}
                 >
                   <option value="fast">Fast</option>
                   <option value="balanced">Balanced</option>
@@ -712,8 +721,8 @@ id: product.id,
                 <span className="solve-label">Лимит</span>
                 <select
                   className="solve-select"
-                  value={timeLimitMs}
-                  onChange={(e) => setTimeLimitMs(Number(e.target.value))}
+                  value={draftTime}
+                  onChange={(e) => setDraftTime(Number(e.target.value))}
                 >
                   <option value={5000}>5 с</option>
                   <option value={10000}>10 с</option>
@@ -726,7 +735,14 @@ id: product.id,
               <button className="btn-secondary btn-sm" onClick={() => navigate("/dashboard")}>
                 Вернуться
               </button>
-              <button className="btn-primary btn-sm" onClick={() => void load()}>
+              <button
+                className="btn-primary btn-sm"
+                onClick={() => {
+                  setSolverProfile(draftProfile);
+                  setTimeLimitMs(draftTime);
+                  void load(draftProfile, draftTime);
+                }}
+              >
                 Пересчитать
               </button>
             </div>
@@ -743,7 +759,7 @@ id: product.id,
       <section className="summary-strip" aria-label="Сводка коробки">
         <Metric icon={<Box size={18} />} label="Выбрана" value={`Коробка ${selectedContainer.index} · ${selectedContainer.boxName}`} />
         <Metric icon={<Ruler size={18} />} label="Габариты" value={formatDimensions(selectedContainer.box.dimensions)} />
-        <Metric icon={<Scale size={18} />} label="Вес" value={`${(totalWeight / 1000).toFixed(1)} / ${selectedContainer.box.maxMass} кг`} />
+        <Metric icon={<Scale size={18} />} label="Вес" value={`${(totalWeight / 1000).toFixed(1)} / ${(selectedContainer.box.maxMass / 1000).toFixed(0)} кг`} />
         <Metric icon={<PackageCheck size={18} />} label="Заполнение" value={`${Math.round(selectedContainer.fillRate * 100)}%`} />
       </section>
 

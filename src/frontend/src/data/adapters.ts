@@ -9,7 +9,7 @@ export function shortId(id: string, head = 8, tail = 4): string {
   return `${id.slice(0, head)}…${id.slice(-tail)}`
 }
 
-/** API box -> UI box (millimetres preserved, dimensions renamed). */
+/** API box -> UI box (dimensions in millimetres, max weight in kg; API sends grams). */
 export function toUiBox(box: ApiBox): Box {
   return {
     id: box.id,
@@ -19,7 +19,7 @@ export function toUiBox(box: ApiBox): Box {
     h: box.height,
     d: box.depth,
     qty: box.available_count,
-    maxWeight: box.max_weight,
+    maxWeight: box.max_weight / 1000,
     status: box.available_count < 10 ? 'critical' : box.available_count < 25 ? 'low' : 'in',
   }
 }
@@ -61,7 +61,7 @@ export function toProductPayload(product: Product): ProductCreatePayload {
   }
 }
 
-/** UI box -> create payload (UI `w/h/d` map to width/height/depth). */
+/** UI box -> create payload (UI `w/h/d` map to width/height/depth, max weight kg -> grams). */
 export function toBoxPayload(box: Box): BoxCreatePayload {
   return {
     name: box.name,
@@ -69,7 +69,7 @@ export function toBoxPayload(box: Box): BoxCreatePayload {
     width: box.w,
     height: box.h,
     depth: box.d,
-    max_weight: box.maxWeight,
+    max_weight: box.maxWeight * 1000,
     available_count: box.qty,
   }
 }

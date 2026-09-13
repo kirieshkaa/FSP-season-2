@@ -1,4 +1,4 @@
-import { request } from "./client";
+import { ApiError, request } from "./client";
 
 export interface SolverBoxInput {
   width: number;
@@ -11,19 +11,13 @@ export interface SolverBoxInput {
 
 export interface SolverItemInput {
   id: string;
+  name?: string;
   x: number;
   y: number;
   z: number;
   weight?: number;
   quantity?: number;
-  must_stay_upright?: boolean;
   is_stackable?: boolean;
-  max_top_load?: number;
-  minimum_support_ratio?: number;
-  incompatible_tags?: string[];
-  allowed_rotations?: string[] | null;
-  is_floor_only?: boolean;
-  tags?: string[];
 }
 
 export interface SolveRequest {
@@ -47,14 +41,24 @@ export interface PackedBox {
 }
 
 export interface SolveResponse {
+  result_code?: number;
   containers: PackedBox[];
   unpacked: string[];
 }
 
 export const mathModelApi = {
-  solve: (payload: SolveRequest) =>
-    request<SolveResponse>("/math-model/solve", {
-      method: "POST",
-      body: payload,
-    }),
+  solve: async (payload: SolveRequest): Promise<SolveResponse> => {
+    try {
+      return await request<SolveResponse>("/math-model/solve", {
+        method: "POST",
+        body: payload,
+      });
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        const body = err.detail as SolveResponse | undefined;
+        if (body?.containers) return body;
+      }
+      throw err;
+    }
+  },
 };

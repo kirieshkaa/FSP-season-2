@@ -11,6 +11,7 @@ import {
 import Login from '../pages/Login'
 import Register from '../pages/Register'
 import Dashboard, { type SelectionApi } from '../pages/Dashboard'
+import BoxesPage from '../pages/BoxesPage'
 import AdminPanel from '../pages/AdminPanel'
 import PackingPage from '../pages/PackingPage'
 import Profile from '../pages/Profile'
@@ -65,8 +66,8 @@ function AuthLayout(): ReactElement {
   useEffect(() => {
     const card = cardRef.current
     if (!card) return
-    // Страница въезжает со своей стороны: /auth — слева, /register — справа.
-    const fromLeft = location.pathname.split('/')[1] === 'auth'
+    // Страница въезжает со своей стороны: /login — слева, /register — справа.
+    const fromLeft = location.pathname.split('/')[1] === 'login'
     animate(card, {
       translateX: [fromLeft ? -70 : 70, 0],
       opacity: [0, 1],
@@ -98,42 +99,46 @@ function AuthBackground(): ReactElement {
 function Protected({ children }: { children: ReactElement }): ReactElement {
   const { isAuthenticated, loading } = useAuth()
   if (loading) return <div className="route-loading">Загрузка…</div>
-  if (!isAuthenticated) return <Navigate to="/auth" replace />
+  if (!isAuthenticated) return <Navigate to="/login" replace />
   return children
 }
 
 function AdminOnly({ children }: { children: ReactElement }): ReactElement {
   const { isAdmin, loading } = useAuth()
   if (loading) return <div className="route-loading">Загрузка…</div>
-  if (!isAdmin) return <Navigate to="/dashboard" replace />
+  if (!isAdmin) return <Navigate to="/products" replace />
   return children
 }
 
-function shell(page: ReactElement, activeNav?: 'boxes' | 'products' | 'admin'): ReactElement {
-  return <DefaultLayout activeNav={activeNav}>{page}</DefaultLayout>
+function shell(page: ReactElement): ReactElement {
+  return <DefaultLayout>{page}</DefaultLayout>
 }
 
 const router = createBrowserRouter([
-  { path: '/', element: <Navigate to="/auth" replace /> },
-  { path: '/auth', element: <AuthLayout />, children: [{ index: true, element: <Login /> }] },
+  { path: '/', element: <Navigate to="/login" replace /> },
+  { path: '/login', element: <AuthLayout />, children: [{ index: true, element: <Login /> }] },
   { path: '/register', element: <AuthLayout />, children: [{ index: true, element: <Register /> }] },
   {
-    path: '/dashboard',
-    element: <Protected>{shell(<DashboardPage />, 'boxes')}</Protected>,
+    path: '/products',
+    element: <Protected>{shell(<DashboardPage />)}</Protected>,
+  },
+  {
+    path: '/boxes',
+    element: <Protected>{shell(<BoxesPage />)}</Protected>,
   },
   {
     path: '/packing',
-    element: <Protected>{shell(<PackingPage />, 'products')}</Protected>,
+    element: <Protected>{shell(<PackingPage />)}</Protected>,
   },
   {
     path: '/admin',
-    element: <AdminOnly>{shell(<AdminPanel />, 'admin')}</AdminOnly>,
+    element: <AdminOnly>{shell(<AdminPanel />)}</AdminOnly>,
   },
   {
     path: '/profile',
     element: <Protected>{shell(<Profile />)}</Protected>,
   },
-  { path: '*', element: <Navigate to="/dashboard" replace /> },
+  { path: '*', element: <Navigate to="/products" replace /> },
 ])
 
 export function AppRouter(): ReactElement {

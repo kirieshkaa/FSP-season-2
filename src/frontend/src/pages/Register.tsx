@@ -33,7 +33,7 @@ export default function Register(): ReactElement {
     setBusy(true)
     try {
       const message = await register({ name: name.trim(), email: email.trim(), password })
-      navigate('/auth', { replace: true, state: { registered: true, message } })
+      navigate('/login', { replace: true, state: { registered: true, message } })
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не удалось зарегистрироваться')
     } finally {
@@ -132,7 +132,7 @@ export default function Register(): ReactElement {
       </form>
 
       <p className="auth-hint">
-        Уже есть аккаунт? <Link to="/auth">Войти</Link>
+        Уже есть аккаунт? <Link to="/login">Войти</Link>
       </p>
     </>
   )

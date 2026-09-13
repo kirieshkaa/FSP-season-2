@@ -4,7 +4,7 @@ import { USER_STATUS_LABEL } from '../data/mock.js'
 import type { AdminUser, UserStatus } from '../data/mock.js'
 import {
   IconSearch, IconMore, IconCheck, IconX, IconBan, IconTrash,
-  IconArrowUpDown, IconArrowUp, IconArrowDown, IconShield, IconUsers
+  IconArrowUpDown, IconArrowUp, IconArrowDown, IconShield, IconUsers, IconUser
 } from '../components/ui/icons.jsx'
 import { adminApi, type UserAction } from '../api/admin'
 import { ApiError } from '../api/client'
@@ -27,6 +27,8 @@ export default function AdminPanel(): ReactElement {
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [openMenu, setOpenMenu] = useState<string | null>(null)
+  const [approveRequired, setApproveRequired] = useState(true)
+  const [approveLoading, setApproveLoading] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
   const toastTimer = useRef<number | undefined>(undefined)
@@ -63,7 +65,28 @@ export default function AdminPanel(): ReactElement {
         showToast(err instanceof ApiError ? err.message : 'Не удалось загрузить пользователей')
       }
     })()
+    void (async () => {
+      try {
+        const res = await adminApi.getRequireApproval()
+        setApproveRequired(res.is_approval_required)
+      } catch {
+        setApproveRequired(true)
+      }
+    })()
   }, [loadUsers])
+
+  async function toggleAutoApprove(next: boolean): Promise<void> {
+    setApproveLoading(true)
+    try {
+      const res = await adminApi.setRequireApproval(!next)
+      setApproveRequired(res.is_approval_required)
+      showToast(next ? 'Автоподтверждение включено' : 'Требуется подтверждение аккаунтов')
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : 'Не удалось изменить настройку')
+    } finally {
+      setApproveLoading(false)
+    }
+  }
 
   async function runAction(userId: string, kind: 'approve' | 'reject' | 'block' | 'unblock' | 'delete'): Promise<void> {
     setOpenMenu(null)
@@ -161,16 +184,32 @@ export default function AdminPanel(): ReactElement {
             </div>
             <div className="stat-chip ok">
               <span className="stat-num">{stats.approved}</span>
-              <span className="stat-label">Одобрены</span>
+              <span className="stat-label"><IconCheck /> Одобрены</span>
             </div>
             <div className="stat-chip warn">
               <span className="stat-num">{stats.pending}</span>
-              <span className="stat-label">Ожидают</span>
+              <span className="stat-label"><IconUser /> Ожидают</span>
             </div>
             <div className="stat-chip danger">
               <span className="stat-num">{stats.blocked}</span>
-              <span className="stat-label">Заблокированы</span>
+              <span className="stat-label"><IconBan /> Заблокированы</span>
             </div>
+          </div>
+
+          <div className="auto-approve">
+            <div className="auto-approve-copy">
+              <b>Автоподтверждение новых аккаунтов</b>
+              <span>Новые регистрации получают доступ без одобрения администратора</span>
+            </div>
+            <label className="approve-toggle">
+              <input
+                type="checkbox"
+                checked={!approveRequired}
+                disabled={approveLoading}
+                onChange={(e) => void toggleAutoApprove(e.target.checked)}
+              />
+              <span className="toggle-track" />
+            </label>
           </div>
 
           <div className="table-toolbar">
