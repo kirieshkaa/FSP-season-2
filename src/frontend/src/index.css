@@ -1,0 +1,26 @@
+/* Global app styles and shared primitives. */
+@import './pages/login.css';
+@import './pages/packing.css';
+
+.route-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  color: var(--text-muted, #667085);
+  font-size: 15px;
+}
+
+a,
+a:link,
+a:visited {
+  text-decoration: none;
+}
+
+a:visited {
+  color: inherit;
+}
+
+a:hover {
+  text-decoration: none;
+}
