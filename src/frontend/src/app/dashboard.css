@@ -424,6 +424,20 @@
   white-space: nowrap;
 }
 
+.sel-col {
+  width: 42px;
+  padding: 11px 8px !important;
+  text-align: center;
+}
+
+.sel-all {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--color-primary, #005bff);
+  cursor: pointer;
+  vertical-align: middle;
+}
+
 .data-table tbody tr {
   transition: background 0.15s ease;
 }

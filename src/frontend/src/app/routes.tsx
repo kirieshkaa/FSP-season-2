@@ -31,7 +31,19 @@ function DashboardPage(): ReactElement {
           cur.some((x) => x.sku === p.sku) ? cur.filter((x) => x.sku !== p.sku) : [...cur, p],
         ),
       deselect: (sku: string) => setSelection((cur) => cur.filter((x) => x.sku !== sku)),
-      setSelectionAll: () => setSelection((cur) => cur),
+      selectAll: (products: Product[]) =>
+        setSelection((cur) => {
+          const have = new Set(cur.map((x) => x.sku))
+          const merged = [...cur]
+          for (const p of products) {
+            if (!have.has(p.sku)) {
+              merged.push(p)
+              have.add(p.sku)
+            }
+          }
+          return merged
+        }),
+      clear: () => setSelection([]),
       confirm: () => {
         // localStorage (не sessionStorage): переживает F5 на странице упаковки
         const skus = selection.map((p) => p.sku)

@@ -308,7 +308,7 @@ function SortTh({ label, k, sortKey, sortOrder, onClick }: {
 }
 
 function ProductsTable({ products, total, page, onPageChange, api, onEdit, onDelete, onView }: ProductsProps): ReactElement {
-  const { selection, toggle, confirm } = api
+  const { selection, toggle, clear, selectAll, confirm } = api
   const [query, setQuery] = useState('')
   const [dest, setDest] = useState('all')
   const [minW, setMinW] = useState('')
@@ -345,6 +345,14 @@ function ProductsTable({ products, total, page, onPageChange, api, onEdit, onDel
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const safePage = Math.min(page, totalPages)
   const pageRows = filtered
+  const allVisibleSelected =
+    pageRows.length > 0 && pageRows.every((p) => selection.some((x) => x.sku === p.sku))
+  const someVisibleSelected = !allVisibleSelected && pageRows.some((p) => selection.some((x) => x.sku === p.sku))
+  const selectAllRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (selectAllRef.current) selectAllRef.current.indeterminate = someVisibleSelected
+  }, [someVisibleSelected])
 
   useEffect(() => {
     if (firstRender.current) {
@@ -435,6 +443,16 @@ function ProductsTable({ products, total, page, onPageChange, api, onEdit, onDel
         <table className="data-table products-table">
           <thead>
             <tr>
+              <th className="sel-col">
+                <input
+                  ref={selectAllRef}
+                  type="checkbox"
+                  className="sel-all"
+                  aria-label="Выбрать все отфильтрованные"
+                  checked={allVisibleSelected}
+                  onChange={() => (allVisibleSelected || someVisibleSelected ? clear() : selectAll(pageRows))}
+                />
+              </th>
               <SortTh label="Артикул" k="sku" sortKey={sortKey} sortOrder={sortOrder} onClick={setSort} />
               <SortTh label="Наименование" k="name" sortKey={sortKey} sortOrder={sortOrder} onClick={setSort} />
               <SortTh label="Габариты Д×Ш×В" k="volume" sortKey={sortKey} sortOrder={sortOrder} onClick={setSort} />
@@ -449,6 +467,15 @@ function ProductsTable({ products, total, page, onPageChange, api, onEdit, onDel
               const checked = selection.some((x) => x.sku === p.sku)
               return (
                 <tr key={p.sku} className={`row-click${checked ? ' row-sel' : ''}`} onClick={() => toggle(p)}>
+                  <td
+                    className="sel-col"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggle(p);
+                    }}
+                  >
+                    <input type="checkbox" className="sel-all" checked={checked} readOnly />
+                  </td>
                   <td className="cell-sku" title={p.sku}>{shortId(p.sku)}</td>
                   <td className="cell-name">{p.name}</td>
                   <td>{p.g}</td>
@@ -467,7 +494,7 @@ function ProductsTable({ products, total, page, onPageChange, api, onEdit, onDel
             })}
             {pageRows.length === 0 && (
               <tr>
-                <td colSpan={7} className="empty-cell">Ничего не найдено — измените условия поиска</td>
+                <td colSpan={8} className="empty-cell">Ничего не найдено — измените условия поиска</td>
               </tr>
             )}
           </tbody>
