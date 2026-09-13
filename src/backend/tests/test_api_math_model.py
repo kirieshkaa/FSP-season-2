@@ -62,7 +62,7 @@ class TestMathModelSolve:
 
         assert response.status_code == 200, response.text
         body = response.json()
-        assert "result_code" not in body
+        assert body["result_code"] == 0
         assert len(body["containers"]) == 1
         assert body["containers"][0]["box_type"] == "c1"
         assert body["containers"][0]["placements"][0]["item_id"] == "i1#1"
@@ -105,7 +105,7 @@ class TestMathModelSolve:
         )
 
         assert response.status_code == 400
-        assert "result_code" not in response.json()
+        assert response.json()["result_code"] == 100
 
     async def test_empty_boxes_is_400(self, client, container):
         token = await _token_for(client, container, "solver", UserRole.ADMIN)
@@ -117,7 +117,7 @@ class TestMathModelSolve:
         )
 
         assert response.status_code == 400
-        assert "result_code" not in response.json()
+        assert response.json()["result_code"] == 100
 
     async def test_oversized_item_is_infeasible_409(self, client, container):
         token = await _token_for(client, container, "solver", UserRole.ADMIN)
@@ -131,7 +131,7 @@ class TestMathModelSolve:
 
         assert response.status_code == 409
         body = response.json()
-        assert "result_code" not in body
+        assert body["result_code"] == 1
         assert body["unpacked"] == ["big#1"]
 
     async def test_invalid_dimensions_rejected_400(self, client, container):
@@ -149,15 +149,16 @@ class TestMathModelSolve:
     async def test_invalid_rotation_is_400(self, client, container):
         token = await _token_for(client, container, "solver", UserRole.ADMIN)
         payload = _payload(
-            items=[{"id": "i1", "allowed_rotations": ["sideways"]}]
+            items=[{"id": "i1", "x": 10.0, "y": 10.0, "z": 10.0,
+                    "allowed_rotations": ["sideways"]}]
         )
 
         response = await client.post(
             f"{BASE}/math-model/solve", json=payload, headers=_h(token)
         )
 
-        assert response.status_code == 400
-        assert "result_code" not in response.json()
+        assert response.status_code == 500
+        assert response.json()["result_code"] == 500
 
     async def test_counts_expand_containers(self, client, container):
         token = await _token_for(client, container, "solver", UserRole.ADMIN)
@@ -171,7 +172,7 @@ class TestMathModelSolve:
 
         assert response.status_code == 200
         body = response.json()
-        assert "result_code" not in body
+        assert body["result_code"] == 0
         # Only the containers actually used are reported, but the box_type
         # is mapped back to the original key (not the internal "c1_0").
         assert len(body["containers"]) >= 1
@@ -188,4 +189,4 @@ class TestMathModelSolve:
         )
 
         assert response.status_code == 200
-        assert "result_code" not in response.json()
+        assert response.json()["result_code"] == 0

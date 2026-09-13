@@ -1,20 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactElement } from 'react'
 import type { IconComp } from '../components/ui/icons.jsx'
-import { DESTINATIONS, STATUS, deriveStatus } from '../data/mock.js'
-import type { Box, Product } from '../data/mock.js'
+import { DESTINATIONS } from '../data/mock.js'
+import type { Product } from '../data/mock.js'
 import {
-  IconEdit, IconTrash, IconSearch, IconFilter, IconPlus, IconCheck, IconX, IconEye,
+  IconEdit, IconTrash, IconSearch, IconFilter, IconPlus, IconCheck, IconX, IconEye, IconBox,
   IconArrowUp, IconArrowDown, IconArrowUpDown
 } from '../components/ui/icons.jsx'
-import { boxesApi } from '../api/boxes'
 import { productsApi } from '../api/products'
 import { ApiError } from '../api/client'
 import {
-  toBoxPayload,
   toProductPayload,
-  shortId,
-  toUiBox,
   toUiProduct,
 } from '../data/adapters'
 
@@ -33,7 +29,7 @@ interface Props {
 
 const PAGE_SIZE = 10
 
-type SortKey = 'sku' | 'name' | 'volume' | 'qty' | 'weight' | 'destination'
+type SortKey = 'name' | 'volume' | 'qty' | 'weight' | 'destination'
 type SortOrder = 'asc' | 'desc'
 
 function TableAction({ icon: I, title, danger, onClick }: { icon: IconComp; title: string; danger?: boolean; onClick?: () => void }): ReactElement {
@@ -84,205 +80,14 @@ function FormModal({ title, sub, children, onSave, onClose, saveLabel = 'Сох�
   )
 }
 
-/* ===== Boxes ===== */
-
-interface BoxesProps {
-  boxes: Box[]
-  onEdit: (box: Box) => void
-  onDelete: (id: string) => void
-}
-
-function BoxesTable({ boxes, onEdit, onDelete }: BoxesProps): ReactElement {
-  return (
-    <div className="table-scroll">
-      <table className="data-table boxes-table">
-        <thead>
-          <tr>
-            <th>Тип тары</th>
-            <th>Д × Ш × В (мм)</th>
-            <th>Макс. вес</th>
-            <th>Кол-во (шт)</th>
-            <th>Статус</th>
-            <th className="ta-right">Действия</th>
-          </tr>
-        </thead>
-        <tbody>
-          {boxes.map((box) => {
-            const st = STATUS[box.status]
-            return (
-              <tr key={box.id} className={box.status === 'critical' ? 'row-critical' : ''}>
-                <td className="cell-name">
-                  <span className="box-tag" title={box.id}>{box.type || shortId(box.id)}</span>
-                  <span className="box-name">{box.name}</span>
-                </td>
-                <td>{box.w} × {box.h} × {box.d}</td>
-                <td>{box.maxWeight} кг</td>
-                <td className={box.qty < 25 ? 'cell-qty warn' : 'cell-qty'}>
-                  {box.qty}
-                </td>
-                <td><span className={`status-badge ${st.cls}`}>{st.label}</span></td>
-                <td className="ta-right">
-                  <div className="table-actions">
-                    <TableAction icon={IconEdit} title="Редактировать" onClick={() => onEdit(box)} />
-                    <TableAction icon={IconTrash} title="Удалить" danger onClick={() => onDelete(box.id)} />
-                  </div>
-                </td>
-              </tr>
-            )
-          })}
-          {boxes.length === 0 && (
-            <tr>
-              <td colSpan={6} className="empty-cell">Конфигураций нет — добавьте коробку</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-interface EditBoxProps {
-  box: Box
-  onSave: (b: Box) => void
-  onClose: () => void
-}
-
-function EditBoxModal({ box, onSave, onClose }: EditBoxProps): ReactElement {
-  const [name, setName] = useState(box.name)
-  const [type, setType] = useState(box.type)
-  const [w, setW] = useState(String(box.w))
-  const [h, setH] = useState(String(box.h))
-  const [d, setD] = useState(String(box.d))
-  const [qty, setQty] = useState(String(box.qty))
-  const [maxWeight, setMaxWeight] = useState(String(box.maxWeight))
-
-  function save(): void {
-    const qtyN = Math.max(0, Number(qty) || 0)
-    onSave({
-      ...box,
-      name: name.trim() || box.name,
-      type: type.trim() || box.type,
-      w: Math.max(1, Number(w) || 1),
-      h: Math.max(1, Number(h) || 1),
-      d: Math.max(1, Number(d) || 1),
-      qty: qtyN,
-      maxWeight: Math.max(1, Number(maxWeight) || 1),
-      status: deriveStatus(qtyN)
-    })
-    onClose()
-  }
-
-  return (
-    <FormModal title={`Коробка ${box.type || box.id}`} sub="Редактирование конфигурации тары" onSave={save} onClose={onClose}>
-      <div className="form-grid">
-        <label className="form-field form-full">
-          <span>Название</span>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
-        </label>
-        <label className="form-field form-full">
-          <span>Тип (S, M, L, XL…)</span>
-          <input type="text" maxLength={16} placeholder="M" value={type} onChange={(e) => setType(e.target.value)} />
-        </label>
-        <label className="form-field">
-          <span>Длина, мм</span>
-          <input type="number" min="1" value={w} onChange={(e) => setW(e.target.value)} />
-        </label>
-        <label className="form-field">
-          <span>Ширина, мм</span>
-          <input type="number" min="1" value={h} onChange={(e) => setH(e.target.value)} />
-        </label>
-        <label className="form-field">
-          <span>Высота, мм</span>
-          <input type="number" min="1" value={d} onChange={(e) => setD(e.target.value)} />
-        </label>
-        <label className="form-field">
-          <span>Остаток, шт</span>
-          <input type="number" min="0" value={qty} onChange={(e) => setQty(e.target.value)} />
-        </label>
-        <label className="form-field">
-          <span>Макс. вес, кг</span>
-          <input type="number" min="1" value={maxWeight} onChange={(e) => setMaxWeight(e.target.value)} />
-        </label>
-      </div>
-    </FormModal>
-  )
-}
-
-const BOX_ID_PALETTE = ['S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL', '4XL']
-
-function AddBoxModal({ boxes, onSave, onClose }: { boxes: Box[]; onSave: (b: Box) => void; onClose: () => void }): ReactElement {
-  const [id, setId] = useState(() => BOX_ID_PALETTE.find((x) => !boxes.some((b) => b.type === x)) ?? `B${boxes.length + 1}`)
-  const [name, setName] = useState('')
-  const [w, setW] = useState('')
-  const [h, setH] = useState('')
-  const [d, setD] = useState('')
-  const [qty, setQty] = useState('0')
-  const [maxWeight, setMaxWeight] = useState('')
-
-  const idOk = id.trim() !== '' && !boxes.some((b) => b.type === id.trim())
-  const numsOk = [w, h, d, maxWeight].every((x) => x.trim() !== '' && Number(x) > 0) && Number(qty) >= 0
-  const saveDisabled = !idOk || !numsOk
-
-  function save(): void {
-    if (saveDisabled) return
-    const qtyN = Number(qty)
-    onSave({
-      id,
-      name: name.trim() || `Коробка ${id}`,
-      type: id.trim(),
-      w: Number(w),
-      h: Number(h),
-      d: Number(d),
-      qty: qtyN,
-      maxWeight: Number(maxWeight),
-      status: deriveStatus(qtyN)
-    })
-    onClose()
-  }
-
-  return (
-    <FormModal title="Новая коробка" sub="Добавление конфигурации тары" onSave={save} onClose={onClose} saveDisabled={saveDisabled}>
-      <div className="form-grid">
-        <label className="form-field">
-          <span>Тип (S, M, L, XL…)</span>
-          <input type="text" maxLength={16} value={id} onChange={(e) => setId(e.target.value)} className={!idOk ? 'invalid' : ''} />
-        </label>
-        <label className="form-field">
-          <span>Название</span>
-          <input type="text" placeholder="Коробка S" value={name} onChange={(e) => setName(e.target.value)} />
-        </label>
-        <label className="form-field">
-          <span>Длина, мм</span>
-          <input type="number" min="1" placeholder="200" value={w} onChange={(e) => setW(e.target.value)} />
-        </label>
-        <label className="form-field">
-          <span>Ширина, мм</span>
-          <input type="number" min="1" placeholder="150" value={h} onChange={(e) => setH(e.target.value)} />
-        </label>
-        <label className="form-field">
-          <span>Высота, мм</span>
-          <input type="number" min="1" placeholder="100" value={d} onChange={(e) => setD(e.target.value)} />
-        </label>
-        <label className="form-field">
-          <span>Остаток, шт</span>
-          <input type="number" min="0" value={qty} onChange={(e) => setQty(e.target.value)} />
-        </label>
-        <label className="form-field">
-          <span>Макс. вес, кг</span>
-          <input type="number" min="1" placeholder="5" value={maxWeight} onChange={(e) => setMaxWeight(e.target.value)} />
-        </label>
-      </div>
-    </FormModal>
-  )
-}
-
 /* ===== Products ===== */
 
 interface ProductsProps {
   products: Product[]
   total: number
   page: number
-  onPageChange: (p: number) => void
+  loadingMore: boolean
+  onPageChange: (p: number, append?: boolean) => void
   api: SelectionApi
   onEdit: (product: Product) => void
   onDelete: (sku: string) => void
@@ -292,7 +97,7 @@ interface ProductsProps {
 function SortTh({ label, k, sortKey, sortOrder, onClick }: {
   label: string
   k: SortKey
-  sortKey: SortKey
+  sortKey: SortKey | null
   sortOrder: SortOrder
   onClick: (k: SortKey) => void
 }): ReactElement {
@@ -307,16 +112,15 @@ function SortTh({ label, k, sortKey, sortOrder, onClick }: {
   )
 }
 
-function ProductsTable({ products, total, page, onPageChange, api, onEdit, onDelete, onView }: ProductsProps): ReactElement {
+function ProductsTable({ products, total, page, loadingMore, onPageChange, api, onEdit, onDelete, onView }: ProductsProps): ReactElement {
   const { selection, toggle, clear, selectAll, confirm } = api
   const [query, setQuery] = useState('')
   const [dest, setDest] = useState('all')
   const [minW, setMinW] = useState('')
   const [maxW, setMaxW] = useState('')
   const [filtersOpen, setFiltersOpen] = useState(false)
-  const [sortKey, setSortKey] = useState<SortKey>('sku')
+  const [sortKey, setSortKey] = useState<SortKey | null>(null)
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc')
-  const firstRender = useRef(true)
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -329,10 +133,10 @@ function ProductsTable({ products, total, page, onPageChange, api, onEdit, onDel
       if (max !== null && p.weight > max) return false
       return true
     })
+    if (!sortKey) return list
     const dir = sortOrder === 'asc' ? 1 : -1
     return [...list].sort((a, b) => {
       switch (sortKey) {
-        case 'sku': return a.sku.localeCompare(b.sku) * dir
         case 'name': return a.name.localeCompare(b.name, 'ru') * dir
         case 'volume': return (a.w * a.h * a.d - b.w * b.h * b.d) * dir
         case 'qty': return (a.qty - b.qty) * dir
@@ -342,8 +146,6 @@ function ProductsTable({ products, total, page, onPageChange, api, onEdit, onDel
     })
   }, [products, query, dest, minW, maxW, sortKey, sortOrder])
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
-  const safePage = Math.min(page, totalPages)
   const pageRows = filtered
   const allVisibleSelected =
     pageRows.length > 0 && pageRows.every((p) => selection.some((x) => x.sku === p.sku))
@@ -353,18 +155,6 @@ function ProductsTable({ products, total, page, onPageChange, api, onEdit, onDel
   useEffect(() => {
     if (selectAllRef.current) selectAllRef.current.indeterminate = someVisibleSelected
   }, [someVisibleSelected])
-
-  useEffect(() => {
-    if (firstRender.current) {
-      firstRender.current = false
-      return
-    }
-    onPageChange(1)
-  }, [query, dest, minW, maxW, sortKey, sortOrder])
-
-  useEffect(() => {
-    if (page > totalPages) onPageChange(totalPages)
-  }, [page, totalPages])
 
   function setSort(k: SortKey): void {
     if (sortKey === k) {
@@ -380,27 +170,6 @@ function ProductsTable({ products, total, page, onPageChange, api, onEdit, onDel
     setDest('all')
     setMinW('')
     setMaxW('')
-  }
-
-  function pageButtons(): (number | '…')[] {
-    const pages: (number | '…')[] = []
-    if (totalPages <= 7) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i)
-      return pages
-    }
-    const first = 1
-    const last = totalPages
-    const window = [safePage - 1, safePage, safePage + 1].filter((p) => p >= first + 1 && p <= last - 1)
-    const out: (number | '…')[] = [first]
-    let prev = first
-    for (const p of window) {
-      if (p - prev > 1) out.push('…')
-      out.push(p)
-      prev = p
-    }
-    if (last - prev > 1) out.push('…')
-    out.push(last)
-    return out
   }
 
   return (
@@ -453,20 +222,25 @@ function ProductsTable({ products, total, page, onPageChange, api, onEdit, onDel
                   onChange={() => (allVisibleSelected || someVisibleSelected ? clear() : selectAll(pageRows))}
                 />
               </th>
-              <SortTh label="Артикул" k="sku" sortKey={sortKey} sortOrder={sortOrder} onClick={setSort} />
               <SortTh label="Наименование" k="name" sortKey={sortKey} sortOrder={sortOrder} onClick={setSort} />
               <SortTh label="Габариты Д×Ш×В" k="volume" sortKey={sortKey} sortOrder={sortOrder} onClick={setSort} />
               <SortTh label="Кол-во" k="qty" sortKey={sortKey} sortOrder={sortOrder} onClick={setSort} />
               <SortTh label="Вес" k="weight" sortKey={sortKey} sortOrder={sortOrder} onClick={setSort} />
+              <th>Штабелируемый</th>
               <SortTh label="Пункт назначения" k="destination" sortKey={sortKey} sortOrder={sortOrder} onClick={setSort} />
               <th className="ta-right">Действия</th>
             </tr>
           </thead>
           <tbody>
-            {pageRows.map((p) => {
+            {pageRows.map((p, index) => {
               const checked = selection.some((x) => x.sku === p.sku)
               return (
-                <tr key={p.sku} className={`row-click${checked ? ' row-sel' : ''}`} onClick={() => toggle(p)}>
+                <tr
+                  key={p.sku}
+                  className={`row-click row-enter${checked ? ' row-sel' : ''}`}
+                  style={{ animationDelay: `${Math.min(index * 30, 450)}ms` }}
+                  onClick={() => toggle(p)}
+                >
                   <td
                     className="sel-col"
                     onClick={(e) => {
@@ -476,11 +250,19 @@ function ProductsTable({ products, total, page, onPageChange, api, onEdit, onDel
                   >
                     <input type="checkbox" className="sel-all" checked={checked} readOnly />
                   </td>
-                  <td className="cell-sku" title={p.sku}>{shortId(p.sku)}</td>
                   <td className="cell-name">{p.name}</td>
                   <td>{p.g}</td>
                   <td className="cell-qty">{p.qty}</td>
                   <td>{p.weight} г</td>
+                  <td>
+                    {p.isStackable === undefined ? (
+                      '—'
+                    ) : (
+                      <span className={`stackable-badge${p.isStackable ? ' yes' : ''}`}>
+                        {p.isStackable ? 'Да' : 'Нет'}
+                      </span>
+                    )}
+                  </td>
                   <td><span className="dest-badge">{p.destination}</span></td>
                   <td className="ta-right">
                     <div className="table-actions">
@@ -502,20 +284,11 @@ function ProductsTable({ products, total, page, onPageChange, api, onEdit, onDel
       </div>
 
       <div className="pagination">
-        <span className="pg-info">
-          Показано {pageRows.length} из {total} товаров · страница {safePage} из {totalPages}
-        </span>
-        <div className="pg-pages">
-          <button className="pg-btn" disabled={safePage <= 1} onClick={() => onPageChange(safePage - 1)}>‹</button>
-          {pageButtons().map((p, i) =>
-            p === '…' ? (
-              <span className="pg-more" key={`m${i}`}>…</span>
-            ) : (
-              <button key={p} className={`pg-btn${p === safePage ? ' active' : ''}`} onClick={() => onPageChange(p)}>{p}</button>
-            )
-          )}
-          <button className="pg-btn" disabled={safePage >= totalPages} onClick={() => onPageChange(safePage + 1)}>›</button>
-        </div>
+        {products.length < total && (
+          <button className="btn-secondary btn-sm" disabled={loadingMore} onClick={() => onPageChange(page + 1, true)}>
+            {loadingMore ? 'Загрузка…' : 'Показать больше'}
+          </button>
+        )}
       </div>
 
       <div className="selection-bar">
@@ -523,8 +296,8 @@ function ProductsTable({ products, total, page, onPageChange, api, onEdit, onDel
           Выбрано: <b>{selection.length}</b>
         </span>
         <button className="btn-primary btn-sm" disabled={selection.length === 0} onClick={confirm}>
-          <IconCheck />
-          Подтвердить
+          <IconBox />
+          Упаковать
         </button>
       </div>
     </>
@@ -770,34 +543,30 @@ function ProductInfoModal({ product, onClose }: { product: Product; onClose: () 
 }
 
 export default function Dashboard({ api }: Props): ReactElement {
-  const [boxes, setBoxes] = useState<Box[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [productTotal, setProductTotal] = useState(0)
   const [productPage, setProductPage] = useState(1)
   const [productLoading, setProductLoading] = useState(true)
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [editBox, setEditBox] = useState<Box | null>(null)
-  const [addBoxOpen, setAddBoxOpen] = useState(false)
   const [editProduct, setEditProduct] = useState<Product | null>(null)
   const [addProductOpen, setAddProductOpen] = useState(false)
   const [viewProduct, setViewProduct] = useState<Product | null>(null)
 
-  const loadBoxes = useCallback(async () => {
-    const page = await boxesApi.list({ page: 1, limit: 100 })
-    setBoxes(page.items.map(toUiBox))
-  }, [])
-
   const firstProductLoad = useRef(true)
 
-  const loadProductPage = useCallback(async (p: number) => {
+  const loadProductPage = useCallback(async (p: number, append = false) => {
     if (firstProductLoad.current) {
       firstProductLoad.current = false
       setProductLoading(true)
     }
     try {
       const res = await productsApi.list({ page: p, limit: PAGE_SIZE })
-      setProducts(res.items.map(toUiProduct))
+      const items = res.items.map(toUiProduct)
+      setProducts((cur) => {
+        if (!append) return items
+        const have = new Set(cur.map((x) => x.sku))
+        return [...cur, ...items.filter((x) => !have.has(x.sku))]
+      })
       setProductTotal(res.total)
       setProductPage(res.page)
     } catch (err) {
@@ -808,31 +577,8 @@ export default function Dashboard({ api }: Props): ReactElement {
   }, [])
 
   useEffect(() => {
-    void (async () => {
-      setLoading(true)
-      setError('')
-      try {
-        await loadBoxes()
-      } catch (err) {
-        setError(err instanceof ApiError ? err.message : 'Не удалось загрузить данные')
-      } finally {
-        setLoading(false)
-      }
-    })()
-  }, [loadBoxes])
-
-  useEffect(() => {
     void loadProductPage(1)
   }, [loadProductPage])
-
-  async function deleteBox(id: string): Promise<void> {
-    try {
-      await boxesApi.remove(id)
-      await loadBoxes()
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось удалить коробку')
-    }
-  }
 
   async function deleteProduct(sku: string): Promise<void> {
     try {
@@ -845,28 +591,10 @@ export default function Dashboard({ api }: Props): ReactElement {
   }
 
   return (
-    <div className="content">
+    <div className="content content-single">
       {error && <div className="toast">{error}</div>}
 
-      <section className="panel left-panel">
-        <div className="panel-head">
-          <div>
-            <h2 className="panel-title">Конфигурации коробок</h2>
-            <p className="panel-sub">Типы упаковки и остатки на складе</p>
-          </div>
-          <button className="btn-primary btn-sm" onClick={() => setAddBoxOpen(true)}>
-            <IconPlus />
-            Добавить коробки
-          </button>
-        </div>
-        {loading ? (
-          <div className="route-loading">Загрузка…</div>
-        ) : (
-          <BoxesTable boxes={boxes} onEdit={setEditBox} onDelete={(id) => void deleteBox(id)} />
-        )}
-      </section>
-
-      <section className="panel right-panel">
+      <section className="panel">
         <div className="panel-head">
           <div>
             <h2 className="panel-title">Товары на складе</h2>
@@ -884,7 +612,8 @@ export default function Dashboard({ api }: Props): ReactElement {
             products={products}
             total={productTotal}
             page={productPage}
-            onPageChange={(p) => void loadProductPage(p)}
+            loadingMore={productLoading}
+            onPageChange={(p, append) => void loadProductPage(p, append)}
             api={api}
             onEdit={setEditProduct}
             onDelete={(sku) => void deleteProduct(sku)}
@@ -893,46 +622,6 @@ export default function Dashboard({ api }: Props): ReactElement {
         )}
       </section>
 
-      {editBox && (
-        <EditBoxModal
-          box={editBox}
-          onClose={() => setEditBox(null)}
-          onSave={(b) => {
-            void (async () => {
-              try {
-                await boxesApi.update(b.id, {
-                  name: b.name,
-                  type: b.type,
-                  width: b.w,
-                  height: b.h,
-                  depth: b.d,
-                  max_weight: b.maxWeight,
-                  available_count: b.qty,
-                })
-                await loadBoxes()
-              } catch (err) {
-                setError(err instanceof ApiError ? err.message : 'Не удалось сохранить коробку')
-              }
-            })()
-          }}
-        />
-      )}
-      {addBoxOpen && (
-        <AddBoxModal
-          boxes={boxes}
-          onClose={() => setAddBoxOpen(false)}
-          onSave={(b) => {
-            void (async () => {
-              try {
-                await boxesApi.create(toBoxPayload(b))
-                await loadBoxes()
-              } catch (err) {
-                setError(err instanceof ApiError ? err.message : 'Не удалось создать коробку')
-              }
-            })()
-          }}
-        />
-      )}
       {viewProduct && (
         <ProductInfoModal product={viewProduct} onClose={() => setViewProduct(null)} />
       )}

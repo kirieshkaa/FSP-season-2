@@ -37,7 +37,7 @@ export default function Login(): ReactElement {
     setBusy(true)
     try {
       const profile = await login({ email: email.trim(), password })
-      navigate(profile.role === 'admin' ? '/admin' : '/dashboard', { replace: true })
+      navigate(profile.role === 'admin' ? '/admin' : '/products', { replace: true })
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не удалось войти')
     } finally {

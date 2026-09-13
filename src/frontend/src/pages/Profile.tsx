@@ -91,7 +91,7 @@ export default function Profile(): ReactElement {
 
   async function handleLogout(): Promise<void> {
     await logout()
-    navigate('/auth', { replace: true })
+    navigate('/login', { replace: true })
   }
 
   return (
